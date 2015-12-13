@@ -1,5 +1,9 @@
 module Cloudcatcher where
 
 import Html exposing (..)
+import Html.Attributes exposing (..)
 
-main = text "Hello there buddy!"
+pageHeader : Html
+pageHeader = h1 [] [ text "Cloudcatcher" ]
+
+main = pageHeader

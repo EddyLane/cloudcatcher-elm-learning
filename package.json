@@ -11,6 +11,11 @@
   "devDependencies": {
     "elm": "^0.16.0",
     "gulp": "^3.9.0",
-    "gulp-elm": "^0.2.0"
+    "gulp-elm": "^0.2.0",
+    "gulp-livereload": "^3.8.1",
+    "gulp-util": "^3.0.7"
+  },
+  "dependencies": {
+    "bootstrap": "^3.3.6"
   }
 }
