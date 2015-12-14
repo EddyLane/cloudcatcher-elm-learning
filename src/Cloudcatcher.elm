@@ -7,7 +7,7 @@ import Signal exposing (Address)
 import String exposing (toInt)
 import Http
 import StartApp.Simple as StartApp
-import Json.Decode as Json exposing ((:=))
+import Json.Decode as Decode exposing (Decoder, (:=))
 
 -- UTILS
 
@@ -26,28 +26,39 @@ parseInt string =
 --searchForPodcast query =
 --  Http.get "https://itunes.apple.com/search?term=" ++ query ++ "&media=podcast"
 
+testData = "{\"resultCount\":1,\"results\": [{\"wrapperType\":\"track\", \"kind\":\"podcast\", \"artistId\":825701899, \"collectionId\":496893300, \"trackId\":496893300, \"artistName\":\"DevChat.tv\", \"collectionName\":\"JavaScript Jabber\", \"trackName\":\"JavaScript Jabber\", \"collectionCensoredName\":\"JavaScript Jabber\", \"trackCensoredName\":\"JavaScript Jabber\", \"artistViewUrl\":\"https://itunes.apple.com/us/artist/devchat.tv/id825701899?mt=2&uo=4\", \"collectionViewUrl\":\"https://itunes.apple.com/us/podcast/javascript-jabber/id496893300?mt=2&uo=4\", \"feedUrl\":\"http://feeds.feedwrench.com/JavaScriptJabber.rss\", \"trackViewUrl\":\"https://itunes.apple.com/us/podcast/javascript-jabber/id496893300?mt=2&uo=4\", \"artworkUrl30\":\"http://is5.mzstatic.com/image/thumb/Music2/v4/7c/50/e9/7c50e99f-5f2a-9f41-1eaa-116fcee0eb68/source/30x30bb.jpg\", \"artworkUrl60\":\"http://is5.mzstatic.com/image/thumb/Music2/v4/7c/50/e9/7c50e99f-5f2a-9f41-1eaa-116fcee0eb68/source/60x60bb.jpg\", \"artworkUrl100\":\"http://is5.mzstatic.com/image/thumb/Music2/v4/7c/50/e9/7c50e99f-5f2a-9f41-1eaa-116fcee0eb68/source/100x100bb.jpg\", \"collectionPrice\":0.00, \"trackPrice\":0.00, \"trackRentalPrice\":0, \"collectionHdPrice\":0, \"trackHdPrice\":0, \"trackHdRentalPrice\":0, \"releaseDate\":\"2015-12-09T16:00:00Z\", \"collectionExplicitness\":\"notExplicit\", \"trackExplicitness\":\"notExplicit\", \"trackCount\":189, \"country\":\"USA\", \"currency\":\"USD\", \"primaryGenreName\":\"Training\", \"radioStationUrl\":\"https://itunes.apple.com/station/idra.496893300\", \"artworkUrl600\":\"http://is5.mzstatic.com/image/thumb/Music2/v4/7c/50/e9/7c50e99f-5f2a-9f41-1eaa-116fcee0eb68/source/600x600bb.jpg\", \"genreIds\":[\"1470\", \"26\", \"1304\", \"1318\", \"1480\"], \"genres\":[\"Training\", \"Podcasts\", \"Education\", \"Technology\", \"Software How-To\"]}]}"
+
+decoder : Decoder Podcast
+decoder = Decode.object1 Podcast
+            ("collectionName" := Decode.string )
+
+decoderCol : Decoder Collection
+decoderCol = Decode.object1 identity
+            ("results" := Decode.list decoder)
+
+
 newPodcast : String -> Podcast
 newPodcast name = 
   {
-    name = name
+    collectionName = name
   }
 
 -- MODEL
 
 type alias Model = 
-    { entries : List Podcast,
+    { entries : Collection,
       searchInput : String 
     }
 
 type alias Podcast =
-    { name : String }
+    { collectionName : String }
+
+type alias Collection = List Podcast
+
 
 initialModel : Model
 initialModel = 
-    { entries = 
-        [
-          newPodcast "Test Podcast"
-        ],
+    { entries = Decode.decodeString decoderCol testData,
       searchInput = "" 
     }
 
@@ -99,7 +110,7 @@ searchForm address model =
 podcastListItem : Address Action -> Podcast -> Html
 podcastListItem address podcast = 
   li [ ] 
-     [ text podcast.name ]
+     [ text podcast.collectionName ]
 
 podcastList: Address Action -> List Podcast -> Html
 podcastList address entries = 
