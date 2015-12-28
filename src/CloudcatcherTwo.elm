@@ -33,7 +33,7 @@ type alias Model =
 init : String -> (Model, Effects Action)
 init topic =
   ( Model topic "assets/waiting.gif" [] ""
-  , getSearchResults "Javascript Jabber"
+  , Effects.none
   )
 
 
@@ -78,8 +78,17 @@ update action model =
 
 (=>) = (,)
 
-pageHeader : Html
-pageHeader = h1 [] [ text "Cloudcatcher" ]
+pageHeader : Signal.Address Action -> Model -> Html
+pageHeader address model = nav [ class "navbar navbar-default" ] 
+                 [ 
+                    div [ class "container-fluid" ] 
+                        [
+                            div [ class "navbar-form navbar-left" ]
+                                [
+                                    searchForm address model
+                                ]
+                        ]
+                 ]
 
 pageFooter : Html
 pageFooter = 
@@ -109,7 +118,7 @@ searchForm address model =
 
 podcastListItem : Signal.Address Action -> Podcast -> Html
 podcastListItem address podcast = 
-  li [ ] 
+  li [ class "list-group-item" ] 
      [ text podcast.name 
      ]
 
@@ -118,17 +127,26 @@ podcastList address entries =
   let
     entryItems = List.map (podcastListItem address) entries
   in
-    ul [ ] entryItems
+    ul [ class "list-group" ] entryItems
 
 
 view : Signal.Address Action -> Model -> Html
 view address model = 
-    div
-    [ class "container" ]
-    [
-      searchForm address model, 
-      podcastList address model.entries
-    ]
+    div [] 
+        [ 
+            pageHeader address model,
+            div
+            [ class "container-fluid" ]
+            [
+              div [ class "col-md-6 col-sm-6 col-lg-6"]
+              [ podcastList address model.entries
+              ],
+              div [ class "col-md-6 col-sm-6 col-lg-6"]
+              [ text "Otherside" ]
+              
+            ]
+        ]
+
 
 headerStyle : Attribute
 headerStyle =
@@ -167,9 +185,14 @@ getRandomGif topic =
     |> Task.map NewGif
     |> Effects.task
 
+searchUrl : String -> String
+searchUrl term = 
+  Http.url "http://127.0.0.1:9000/v1/podcasts"
+    ["term" => term]
+
 getSearchResults : String -> Effects Action
 getSearchResults query = 
-  Http.get podcasts ("http://127.0.0.1:9000/v1/podcasts?term=" ++ query)
+  Http.get podcasts (searchUrl query)
     |> Task.toMaybe
     |> Task.map SetResults
     |> Effects.task

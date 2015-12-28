@@ -11022,6 +11022,7 @@ Elm.CloudcatcherTwo.make = function (_elm) {
                                             ,A2(_op["=>"],"background-size","cover")
                                             ,A2(_op["=>"],"background-image",A2($Basics._op["++"],"url(\'",A2($Basics._op["++"],url,"\')")))]));
    };
+   var searchUrl = function (term) {    return A2($Http.url,"http://127.0.0.1:9000/v1/podcasts",_U.list([A2(_op["=>"],"term",term)]));};
    var randomUrl = function (topic) {
       return A2($Http.url,"http://api.giphy.com/v1/gifs/random",_U.list([A2(_op["=>"],"api_key","dc6zaTOxFJmzC"),A2(_op["=>"],"tag",topic)]));
    };
@@ -11032,6 +11033,7 @@ Elm.CloudcatcherTwo.make = function (_elm) {
    var SubmitSearch = function (a) {    return {ctor: "SubmitSearch",_0: a};};
    var RequestMore = {ctor: "RequestMore"};
    var Model = F4(function (a,b,c,d) {    return {topic: a,gifUrl: b,entries: c,searchInput: d};});
+   var init = function (topic) {    return {ctor: "_Tuple2",_0: A4(Model,topic,"assets/waiting.gif",_U.list([]),""),_1: $Effects.none};};
    var Podcast = F2(function (a,b) {    return {name: a,aritstName: b};});
    var podcasts = function () {
       var podcast = A3($Json$Decode.object2,
@@ -11040,14 +11042,7 @@ Elm.CloudcatcherTwo.make = function (_elm) {
       A2($Json$Decode._op[":="],"artistName",$Json$Decode.string));
       return A2($Json$Decode._op[":="],"results",$Json$Decode.list(podcast));
    }();
-   var getSearchResults = function (query) {
-      return $Effects.task(A2($Task.map,
-      SetResults,
-      $Task.toMaybe(A2($Http.get,podcasts,A2($Basics._op["++"],"http://127.0.0.1:9000/v1/podcasts?term=",query)))));
-   };
-   var init = function (topic) {
-      return {ctor: "_Tuple2",_0: A4(Model,topic,"assets/waiting.gif",_U.list([]),""),_1: getSearchResults("Javascript Jabber")};
-   };
+   var getSearchResults = function (query) {    return $Effects.task(A2($Task.map,SetResults,$Task.toMaybe(A2($Http.get,podcasts,searchUrl(query)))));};
    var update = F2(function (action,model) {
       var _p0 = action;
       switch (_p0.ctor)
@@ -11102,6 +11097,7 @@ Elm.CloudcatcherTwo.make = function (_elm) {
                                         ,imgStyle: imgStyle
                                         ,podcasts: podcasts
                                         ,getRandomGif: getRandomGif
+                                        ,searchUrl: searchUrl
                                         ,getSearchResults: getSearchResults
                                         ,randomUrl: randomUrl
                                         ,decodeUrl: decodeUrl};

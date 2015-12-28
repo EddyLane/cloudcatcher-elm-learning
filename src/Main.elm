@@ -1,3 +1,5 @@
+module Main where
+
 import Effects exposing (Never)
 import CloudcatcherTwo exposing (init, update, view)
 import StartApp
