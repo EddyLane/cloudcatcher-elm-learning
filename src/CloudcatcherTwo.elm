@@ -17,35 +17,37 @@ onInput address f =
 -- MODEL
 type alias Collection = List Podcast
 
+
 type alias Podcast =
-    { name : String,
-      aritstName : String }
+    { name : String
+    , aritstName : String 
+    , image : String
+    , id : Int
+    }
 
 type alias Model =
     { topic : String
     , gifUrl : String
     , entries: Collection
     , searchInput: String
+    , selectedPodcast: Maybe Int
     }
-
 
 
 init : String -> (Model, Effects Action)
 init topic =
-  ( Model topic "assets/waiting.gif" [] ""
+  ( Model topic "assets/waiting.gif" [] "" Nothing
   , Effects.none
   )
 
-
 -- UPDATE
-
 type Action
     = RequestMore
     | SubmitSearch String
     | NewGif (Maybe String)
     | UpdateSearchInput String 
+    | SelectPodcast (Maybe Int)
     | SetResults (Maybe Collection)
-
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -59,15 +61,23 @@ update action model =
       )
     
     SetResults results ->
-      ( Model model.topic model.gifUrl (Maybe.withDefault model.entries results) model.searchInput
-      , Effects.none
+      ({ model | entries = (Maybe.withDefault model.entries results) }
+        , Effects.none
       )
+      --( Model model.topic model.gifUrl (Maybe.withDefault model.entries results) model.searchInput
+      --, Effects.none
+      --)
 
     UpdateSearchInput value ->
       ({ model | searchInput = value }
         , Effects.none
       )
   
+    SelectPodcast id ->
+      ({ model | selectedPodcast = id }
+        , Effects.none
+      )
+
     SubmitSearch value -> 
       ({ model | searchInput = value }
         , getSearchResults model.searchInput
@@ -118,17 +128,46 @@ searchForm address model =
 
 podcastListItem : Signal.Address Action -> Podcast -> Html
 podcastListItem address podcast = 
-  li [ class "list-group-item" ] 
+  a  [ class "list-group-item"
+      , href "#" 
+      , onClick address (SelectPodcast (Just podcast.id))
+      ] 
      [ text podcast.name 
      ]
 
-podcastList: Signal.Address Action -> List Podcast -> Html
-podcastList address entries = 
+podcastListItemStyle : Podcast -> Maybe Int -> Attribute
+podcastListItemStyle podcast selectedPodcast = 
+  style
+    [ "class" => "list-group-item"
+    ]
+
+podcastClassActive : Maybe Int -> Podcast -> Bool
+podcastClassActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast == podcast.id
+
+podcastListItemTwo : Signal.Address Action -> Maybe Int -> Podcast -> Html
+podcastListItemTwo address selectedPodcast podcast = 
+  a  [ class "list-group-item" 
+      , href "#" 
+      , onClick address (SelectPodcast (Just podcast.id))
+      ] 
+     [ text podcast.name 
+     ]
+
+
+
+podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> Html
+podcastList address entries selectedPodcast = 
   let
-    entryItems = List.map (podcastListItem address) entries
+    entryItems = List.map (podcastListItemTwo address selectedPodcast) entries
   in
     ul [ class "list-group" ] entryItems
 
+podcastDetail: Signal.Address Action -> Podcast -> Html
+podcastDetail address podcast = 
+    img [
+      href podcast.image
+    ]
+    []
 
 view : Signal.Address Action -> Model -> Html
 view address model = 
@@ -139,10 +178,11 @@ view address model =
             [ class "container-fluid" ]
             [
               div [ class "col-md-6 col-sm-6 col-lg-6"]
-              [ podcastList address model.entries
+              [ podcastList address model.entries model.selectedPodcast
               ],
               div [ class "col-md-6 col-sm-6 col-lg-6"]
-              [ text "Otherside" ]
+              --[ podcastDetail ] 
+              []
               
             ]
         ]
@@ -172,9 +212,11 @@ imgStyle url =
 podcasts : Json.Decoder (List Podcast)
 podcasts =
   let podcast =
-    Json.object2 Podcast
+    Json.object4 Podcast
             ("name" := Json.string )
             ("artistName" := Json.string )
+            ("image" := Json.string )
+            ("id" := Json.int ) 
   in 
     "results" := Json.list podcast
 
