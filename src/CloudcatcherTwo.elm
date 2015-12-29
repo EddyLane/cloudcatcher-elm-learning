@@ -135,18 +135,19 @@ podcastListItem address podcast =
      [ text podcast.name 
      ]
 
-podcastListItemStyle : Podcast -> Maybe Int -> Attribute
-podcastListItemStyle podcast selectedPodcast = 
-  style
-    [ "class" => "list-group-item"
-    ]
+
+podcastClasses : Bool -> String
+podcastClasses active = if active then "list-group-item active" else "list-group-item"
+
+podcastListItemStyle : Podcast -> Maybe Int -> String
+podcastListItemStyle podcast selectedPodcast = podcastClasses (podcastClassActive selectedPodcast podcast)
 
 podcastClassActive : Maybe Int -> Podcast -> Bool
 podcastClassActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast == podcast.id
 
 podcastListItemTwo : Signal.Address Action -> Maybe Int -> Podcast -> Html
 podcastListItemTwo address selectedPodcast podcast = 
-  a  [ class "list-group-item" 
+  a  [ class (podcastListItemStyle podcast selectedPodcast)
       , href "#" 
       , onClick address (SelectPodcast (Just podcast.id))
       ] 
