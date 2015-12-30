@@ -6,16 +6,12 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, targetValue, on)
 import Http
 import Json.Decode as Json exposing(Decoder, (:=))
-import Task
+import Task exposing (andThen, Task)
 import Dict
 
 -- UTIL
 
-
-import Dict
-
-
-filterVisible : PodcastDict -> List Int -> PodcastDict
+filterVisible : Dict.Dict comparable a -> List Int -> Dict.Dict comparable a
 filterVisible haystack needles = 
   Dict.filter (\v a -> (List.member v needles)) haystack
 
@@ -208,20 +204,20 @@ podcastList address entries selectedPodcast =
 
 
 
+podcastDisplay : Podcast -> Html
+podcastDisplay podcast = div [ class "page-header" ] [
+    h3 [] [ text podcast.name, small [] [ text podcast.aritstName ] ],
+    img [ src podcast.image ] []
+  ]
 
-
-podcastDetail: Signal.Address Action -> Podcast -> Html
-podcastDetail address podcast = 
-    img [
-      href podcast.image
-    ]
-    []
-
-rightColumnDisplay : Signal.Address Action -> List Podcast -> Maybe Int -> Html
-rightColumnDisplay address podcast selectedPodcast = 
-  div [] [ text "Right column" ]
-
-
+rightColumnDisplay : Signal.Address Action -> Maybe Podcast -> Html
+rightColumnDisplay address podcast = 
+  div [] 
+      [ 
+          case podcast of
+            Just value -> (podcastDisplay value)
+            Nothing -> div [][]
+      ]
 
 
 view : Signal.Address Action -> Model -> Html
@@ -236,7 +232,9 @@ view address model =
               [ podcastList address (Dict.values (filterVisible model.entriesDict model.visiblePodcasts)) model.selectedPodcast
               ],
               div [ class "col-md-6 col-sm-6 col-lg-6"]
-              []
+              [
+                rightColumnDisplay address (Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.entriesDict)
+              ]
             ]
         ]
 
