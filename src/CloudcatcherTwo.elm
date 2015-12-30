@@ -7,8 +7,21 @@ import Html.Events exposing (onClick, targetValue, on)
 import Http
 import Json.Decode as Json exposing(Decoder, (:=))
 import Task
+import Dict
 
 -- UTIL
+
+
+import Dict
+
+
+filterVisible : PodcastDict -> List Int -> PodcastDict
+filterVisible haystack needles = 
+  Dict.filter (\v a -> (List.member v needles)) haystack
+
+-- The transformation function
+listToDict : (a -> comparable) -> List a -> Dict.Dict comparable a
+listToDict getKey values = Dict.fromList (List.map (\v -> (getKey v, v)) values)
 
 onInput : Signal.Address a -> (String -> a) -> Attribute
 onInput address f =
@@ -17,6 +30,7 @@ onInput address f =
 -- MODEL
 type alias Collection = List Podcast
 
+type alias PodcastDict = Dict.Dict Int Podcast
 
 type alias Podcast =
     { name : String
@@ -31,12 +45,15 @@ type alias Model =
     , entries: Collection
     , searchInput: String
     , selectedPodcast: Maybe Int
+    , entriesDict : PodcastDict 
+    , visiblePodcasts : List Int
     }
+
 
 
 init : String -> (Model, Effects Action)
 init topic =
-  ( Model topic "assets/waiting.gif" [] "" Nothing
+  ( Model topic "assets/waiting.gif" [] "" Nothing Dict.empty []
   , Effects.none
   )
 
@@ -49,6 +66,23 @@ type Action
     | SelectPodcast (Maybe Int)
     | SetResults (Maybe Collection)
 
+
+
+concatResults : List a -> Maybe (List a) -> List a
+concatResults current new = List.append current (Maybe.withDefault [] new)
+
+--addNewResults : List a -> Maybe (List a) -> List a
+--addNewResults current new = List.filter
+
+addEntries : PodcastDict -> Collection -> PodcastDict
+--addEntries current new = Dict.union current (listToDict .id new)
+addEntries current new = 
+  listToDict .id new
+  |> Dict.union current
+
+
+
+
 update : Action -> Model -> (Model, Effects Action)
 update action model =
   case action of
@@ -60,10 +94,20 @@ update action model =
         , Effects.none
       )
     
+    --SetResults results ->
+    --  ({ model | entries = (concatResults model.entries results) }
+    --    , Effects.none
+    --  )
+
     SetResults results ->
-      ({ model | entries = (Maybe.withDefault model.entries results) }
+      ({ model | 
+          entriesDict = addEntries model.entriesDict (Maybe.withDefault [] results),
+          visiblePodcasts = List.map .id (Maybe.withDefault [] results)
+        }
         , Effects.none
       )
+
+
       --( Model model.topic model.gifUrl (Maybe.withDefault model.entries results) model.searchInput
       --, Effects.none
       --)
@@ -74,7 +118,7 @@ update action model =
       )
   
     SelectPodcast id ->
-      ({ model | selectedPodcast = id }
+      ({ model | selectedPodcast = id  }
         , Effects.none
       )
 
@@ -140,10 +184,10 @@ podcastClasses : Bool -> String
 podcastClasses active = if active then "list-group-item active" else "list-group-item"
 
 podcastListItemStyle : Podcast -> Maybe Int -> String
-podcastListItemStyle podcast selectedPodcast = podcastClasses (podcastClassActive selectedPodcast podcast)
+podcastListItemStyle podcast selectedPodcast = podcastClasses (podcastIsActive selectedPodcast podcast)
 
-podcastClassActive : Maybe Int -> Podcast -> Bool
-podcastClassActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast == podcast.id
+podcastIsActive : Maybe Int -> Podcast -> Bool
+podcastIsActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast == podcast.id
 
 podcastListItemTwo : Signal.Address Action -> Maybe Int -> Podcast -> Html
 podcastListItemTwo address selectedPodcast podcast = 
@@ -155,13 +199,16 @@ podcastListItemTwo address selectedPodcast podcast =
      ]
 
 
-
 podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> Html
 podcastList address entries selectedPodcast = 
   let
-    entryItems = List.map (podcastListItemTwo address selectedPodcast) entries
+    entryItems = List.map (podcastListItemTwo address selectedPodcast) (List.sortBy .name entries)
   in
     ul [ class "list-group" ] entryItems
+
+
+
+
 
 podcastDetail: Signal.Address Action -> Podcast -> Html
 podcastDetail address podcast = 
@@ -169,6 +216,13 @@ podcastDetail address podcast =
       href podcast.image
     ]
     []
+
+rightColumnDisplay : Signal.Address Action -> List Podcast -> Maybe Int -> Html
+rightColumnDisplay address podcast selectedPodcast = 
+  div [] [ text "Right column" ]
+
+
+
 
 view : Signal.Address Action -> Model -> Html
 view address model = 
@@ -179,15 +233,12 @@ view address model =
             [ class "container-fluid" ]
             [
               div [ class "col-md-6 col-sm-6 col-lg-6"]
-              [ podcastList address model.entries model.selectedPodcast
+              [ podcastList address (Dict.values (filterVisible model.entriesDict model.visiblePodcasts)) model.selectedPodcast
               ],
               div [ class "col-md-6 col-sm-6 col-lg-6"]
-              --[ podcastDetail ] 
               []
-              
             ]
         ]
-
 
 headerStyle : Attribute
 headerStyle =
@@ -209,6 +260,8 @@ imgStyle url =
     ]
 
 -- EFFECTS
+
+
 
 podcasts : Json.Decoder (List Podcast)
 podcasts =
