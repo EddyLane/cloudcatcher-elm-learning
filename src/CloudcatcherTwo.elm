@@ -35,12 +35,18 @@ type alias Collection = List Podcast
 
 type alias PodcastDict = Dict.Dict Int Podcast
 
+
+
 type alias Podcast =
     { name : String
     , aritstName : String 
     , image : String
     , id : Int
+    , feedUrl : String
     }
+
+type alias Episode = 
+    { title: String }    
 
 type alias Model =
     { topic : String
@@ -53,11 +59,12 @@ type alias Model =
     , searchResults : List Int
     , subscribedPodcasts : List Int
     , visibility : Visibility
+    , episodes : List Episode
     }
 
 init : String -> (Model, Effects Action)
 init topic =
-  ( Model topic "assets/waiting.gif" [] "" Nothing Dict.empty [] [] [] All
+  ( Model topic "assets/waiting.gif" [] "" Nothing Dict.empty [] [] [] All []
   , Effects.none
   )
 
@@ -72,6 +79,7 @@ type Action
     | SubscribeToPodcast Int
     | UnsubscribePodcast Int
     | ToggleSubscriptionView
+    | SetEpisodes (Maybe (List Episode))
 
 concatResults : List a -> Maybe (List a) -> List a
 concatResults current new = List.append current (Maybe.withDefault [] new)
@@ -86,13 +94,15 @@ addEntries current new =
   |> Dict.union current
 
 
-
-
 update : Action -> Model -> (Model, Effects Action)
 update action model =
   case action of
+
     RequestMore ->
       (model, getRandomGif model.topic)
+
+    SetEpisodes maybeEpisodes ->
+      ({ model | episodes = (Maybe.withDefault []  maybeEpisodes)}, Effects.none)
 
     NewGif maybeUrl ->
       ({ model | gifUrl = (Maybe.withDefault model.gifUrl maybeUrl) }
@@ -113,13 +123,11 @@ update action model =
         , Effects.none
       )
 
-
     SubscribeToPodcast id ->
       ({ model | subscribedPodcasts = List.append [id] model.subscribedPodcasts
       }
       , Effects.none
       )
-
 
     UnsubscribePodcast id ->
       ( let
@@ -139,13 +147,22 @@ update action model =
       )
   
     SelectPodcast id ->
-      ({ model | selectedPodcast = id  }
-        , Effects.none
+      ({ model | 
+        selectedPodcast = id ,
+        episodes = []
+      }
+        , 
+        let 
+            getPodcast i = Dict.get (Maybe.withDefault 0 i) model.entriesDict
+        in    
+          case getPodcast id of
+            Just podcast -> getEpisodes podcast.feedUrl
+            Nothing -> Effects.none
       )
 
     SubmitSearch value -> 
       ({ model | searchInput = value }
-        , getSearchResults model.searchInput
+        , getSearchResults value
       )  
 
     ToggleSubscriptionView ->
@@ -243,17 +260,20 @@ podcastIsActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast ==
 
 podcastListItemTwo : Signal.Address Action -> Maybe Int -> List Int -> Podcast-> Html
 podcastListItemTwo address selectedPodcast subscribedPodcasts podcast = 
-  a  [ class (podcastListItemStyle podcast selectedPodcast)
-      , href "#" 
-      , onClick address (SelectPodcast (Just podcast.id))
-      ] 
-     [ 
-        text podcast.name,
-        if (List.member podcast.id subscribedPodcasts) then
-          span [ class "glyphicon glyphicon-star pull-right"] []
-         else 
-          span [] []
-     ]
+  li [] [
+    a  [ class (podcastListItemStyle podcast selectedPodcast)
+        , href "#" 
+        , onClick address (SelectPodcast (Just podcast.id))
+        ] 
+       [ 
+          text podcast.name,
+          if (List.member podcast.id subscribedPodcasts) then
+            span [ class "glyphicon glyphicon-star pull-right"] []
+           else 
+            span [] []
+       ]
+  ]
+
 
 podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> List Int -> Html
 podcastList address entries selectedPodcast subscribedPodcasts = 
@@ -274,29 +294,52 @@ handleClick podcast subscribed =
   else
     SubscribeToPodcast podcast.id  
 
-podcastDisplay : Signal.Address Action -> Podcast -> Bool -> Html
-podcastDisplay address podcast subscribed = div [ class "page-header" ] [
+episodeListItem : Episode -> Html
+episodeListItem episode = 
+  li [] [
+    a  [ href "#" ] 
+       [ 
+          text episode.title
+       ]
+  ]
+
+episodeList : List Episode -> Html
+episodeList episodes = 
+  let
+    entryItems = List.map episodeListItem episodes
+  in
+    ul [ class "list-group" ] entryItems
+
+podcastDisplay : Signal.Address Action -> Podcast -> Bool -> List Episode -> Html
+podcastDisplay address podcast subscribed episodes = div [ class "page-header" ] [
     h3 [] [ text podcast.name, small [] [ text podcast.aritstName ] ],
 
     img [ src podcast.image ] [],
 
     div [] [
 
-      button [ class (if subscribed then "btn btn-primary btn-lg pull-right active" else "btn btn-primary btn-lg pull-right")
+              button [ class (if subscribed then "btn btn-primary btn-lg pull-right active" else "btn btn-primary btn-lg pull-right")
                , onClick address (handleClick podcast subscribed) 
               ]
               [ text (if subscribed then "Unsubscribe" else "Subscribe") ]
     ]
+
+   , div [] [
+        episodeList episodes
+    ]
+
   ]
 
-rightColumnDisplay : Signal.Address Action -> Maybe Podcast -> List Int -> Html
-rightColumnDisplay address podcast subscriptionIds = 
+rightColumnDisplay : Signal.Address Action -> Maybe Podcast -> List Int -> List Episode -> Html
+rightColumnDisplay address podcast subscriptionIds episodes = 
   div [] 
       [ 
           case podcast of
-            Just value -> (podcastDisplay address value) (List.member value.id subscriptionIds)
+            Just value -> (podcastDisplay address value) (List.member value.id subscriptionIds) episodes
             Nothing -> div [][ text "Select a podcast" ]
       ]
+
+
 
 
 -- ROOT
@@ -314,7 +357,7 @@ view address model =
               ],
               div [ class "col-md-6 col-sm-6 col-lg-6"]
               [
-                rightColumnDisplay address (Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.entriesDict) model.subscribedPodcasts
+                rightColumnDisplay address (Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.entriesDict) model.subscribedPodcasts model.episodes
               ]
             ]
         ]
@@ -343,13 +386,22 @@ imgStyle url =
 podcasts : Json.Decoder (List Podcast)
 podcasts =
   let podcast =
-    Json.object4 Podcast
+    Json.object5 Podcast
             ("name" := Json.string )
             ("artistName" := Json.string )
             ("image" := Json.string )
             ("id" := Json.int ) 
+            ("feedUrl" := Json.string )
   in 
     "results" := Json.list podcast
+
+episodes : Json.Decoder (List Episode)
+episodes = 
+  let episode = 
+    Json.object1 Episode
+            ("title" := Json.string)
+  in
+    "results" := Json.list episode
 
 getRandomGif : String -> Effects Action
 getRandomGif topic =
@@ -368,6 +420,19 @@ getSearchResults query =
   Http.get podcasts (searchUrl query)
     |> Task.toMaybe
     |> Task.map SetResults
+    |> Effects.task
+
+episodeUrl : String -> String
+episodeUrl feedUrl = 
+  Http.url "http://127.0.0.1:9000/v1/feed"
+    ["feed" => feedUrl]
+
+
+getEpisodes : String -> Effects Action
+getEpisodes feedUrl = 
+  Http.get episodes (episodeUrl feedUrl)
+    |> Task.toMaybe
+    |> Task.map SetEpisodes
     |> Effects.task
 
 randomUrl : String -> String
