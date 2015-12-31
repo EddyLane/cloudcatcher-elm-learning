@@ -28,6 +28,9 @@ onInput address f =
   on "input" targetValue (\v -> Signal.message address (f v))
 
 -- MODEL
+
+type Visibility = All | Subscribed
+
 type alias Collection = List Podcast
 
 type alias PodcastDict = Dict.Dict Int Podcast
@@ -47,14 +50,14 @@ type alias Model =
     , selectedPodcast: Maybe Int
     , entriesDict : PodcastDict 
     , visiblePodcasts : List Int
+    , searchResults : List Int
     , subscribedPodcasts : List Int
+    , visibility : Visibility
     }
-
-
 
 init : String -> (Model, Effects Action)
 init topic =
-  ( Model topic "assets/waiting.gif" [] "" Nothing Dict.empty [] []
+  ( Model topic "assets/waiting.gif" [] "" Nothing Dict.empty [] [] [] All
   , Effects.none
   )
 
@@ -68,8 +71,7 @@ type Action
     | SetResults (Maybe Collection)
     | SubscribeToPodcast Int
     | UnsubscribePodcast Int
-
-
+    | ToggleSubscriptionView
 
 concatResults : List a -> Maybe (List a) -> List a
 concatResults current new = List.append current (Maybe.withDefault [] new)
@@ -105,7 +107,8 @@ update action model =
     SetResults results ->
       ({ model | 
           entriesDict = addEntries model.entriesDict (Maybe.withDefault [] results),
-          visiblePodcasts = List.map .id (Maybe.withDefault [] results)
+          visiblePodcasts = List.map .id (Maybe.withDefault [] results),
+          searchResults = List.map .id (Maybe.withDefault [] results)
         }
         , Effects.none
       )
@@ -145,6 +148,20 @@ update action model =
         , getSearchResults model.searchInput
       )  
 
+    ToggleSubscriptionView ->
+      ( let 
+            getVisiblity v = 
+              if v == All then Subscribed else All
+            getVisiblePodcasts v =  
+              if v == Subscribed then model.searchResults else model.subscribedPodcasts
+
+          in 
+            { model | 
+                visibility = getVisiblity model.visibility,
+                visiblePodcasts = getVisiblePodcasts model.visibility
+            }    
+        , Effects.none
+      )
 
 -- VIEW
 
@@ -152,17 +169,29 @@ update action model =
 
 (=>) = (,)
 
+
+
 pageHeader : Signal.Address Action -> Model -> Html
 pageHeader address model = nav [ class "navbar navbar-default" ] 
                  [ 
                     div [ class "container-fluid" ] 
                         [
-                            div [ class "navbar-form navbar-left" ]
+
+                                  ul [ class "nav navbar-nav navbar-right" ] 
+                                  [
+                                      li [ class (if model.visibility == All then "" else "active" ) ] [ a [   href "#"
+                                                  , onClick address ToggleSubscriptionView
+                                                   ] [ text "Subscriptions" ] 
+                                    ]
+                                  ] 
+
+                            , div [ class "navbar-form navbar-left" ]
                                 [
                                     searchForm address model
                                 ]
                         ]
                  ]
+
 
 pageFooter : Html
 pageFooter = 
@@ -310,8 +339,6 @@ imgStyle url =
     ]
 
 -- EFFECTS
-
-
 
 podcasts : Json.Decoder (List Podcast)
 podcasts =
