@@ -117,9 +117,12 @@ update action model =
       , Effects.none
       )
 
+
     UnsubscribePodcast id ->
-      ({ model | subscribedPodcasts = List.append [id] model.subscribedPodcasts
-      }
+      ( let
+          remainingEntries = List.filter (\e -> e /= id) model.subscribedPodcasts
+        in
+          { model | subscribedPodcasts = remainingEntries }
       , Effects.none
       )
 
@@ -144,6 +147,8 @@ update action model =
 
 
 -- VIEW
+
+-- HEADER / FOOTER
 
 (=>) = (,)
 
@@ -185,6 +190,9 @@ searchForm address model =
           [ text "Search" ]
         ]
 
+
+-- LEFT HAND SIDE
+
 podcastListItem : Signal.Address Action -> Podcast -> Html
 podcastListItem address podcast = 
   a  [ class "list-group-item"
@@ -204,22 +212,38 @@ podcastListItemStyle podcast selectedPodcast = podcastClasses (podcastIsActive s
 podcastIsActive : Maybe Int -> Podcast -> Bool
 podcastIsActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast == podcast.id
 
-podcastListItemTwo : Signal.Address Action -> Maybe Int -> Podcast -> Html
-podcastListItemTwo address selectedPodcast podcast = 
+podcastListItemTwo : Signal.Address Action -> Maybe Int -> List Int -> Podcast-> Html
+podcastListItemTwo address selectedPodcast subscribedPodcasts podcast = 
   a  [ class (podcastListItemStyle podcast selectedPodcast)
       , href "#" 
       , onClick address (SelectPodcast (Just podcast.id))
       ] 
-     [ text podcast.name 
+     [ 
+        text podcast.name,
+        if (List.member podcast.id subscribedPodcasts) then
+          span [ class "glyphicon glyphicon-star pull-right"] []
+         else 
+          span [] []
      ]
 
-
-podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> Html
-podcastList address entries selectedPodcast = 
+podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> List Int -> Html
+podcastList address entries selectedPodcast subscribedPodcasts = 
   let
-    entryItems = List.map (podcastListItemTwo address selectedPodcast) (List.sortBy .name entries)
+    entryItems = List.map (podcastListItemTwo address selectedPodcast subscribedPodcasts) (List.sortBy .name entries)
   in
     ul [ class "list-group" ] entryItems
+
+
+
+-- RIGHT HAND SIDE
+
+
+handleClick : Podcast -> Bool -> Action
+handleClick podcast subscribed =
+  if subscribed then
+    UnsubscribePodcast podcast.id
+  else
+    SubscribeToPodcast podcast.id  
 
 podcastDisplay : Signal.Address Action -> Podcast -> Bool -> Html
 podcastDisplay address podcast subscribed = div [ class "page-header" ] [
@@ -230,9 +254,9 @@ podcastDisplay address podcast subscribed = div [ class "page-header" ] [
     div [] [
 
       button [ class (if subscribed then "btn btn-primary btn-lg pull-right active" else "btn btn-primary btn-lg pull-right")
-               , onClick address (SubscribeToPodcast podcast.id) 
+               , onClick address (handleClick podcast subscribed) 
               ]
-              [ text "Subscribe" ]
+              [ text (if subscribed then "Unsubscribe" else "Subscribe") ]
     ]
   ]
 
@@ -246,6 +270,8 @@ rightColumnDisplay address podcast subscriptionIds =
       ]
 
 
+-- ROOT
+
 view : Signal.Address Action -> Model -> Html
 view address model = 
     div [] 
@@ -255,7 +281,7 @@ view address model =
             [ class "container-fluid" ]
             [
               div [ class "col-md-6 col-sm-6 col-lg-6"]
-              [ podcastList address (filterVisibleQuick model.entriesDict model.visiblePodcasts) model.selectedPodcast
+              [ podcastList address (filterVisibleQuick model.entriesDict model.visiblePodcasts) model.selectedPodcast model.subscribedPodcasts
               ],
               div [ class "col-md-6 col-sm-6 col-lg-6"]
               [
