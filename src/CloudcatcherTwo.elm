@@ -15,6 +15,10 @@ filterVisible : Dict.Dict comparable a -> List Int -> Dict.Dict comparable a
 filterVisible haystack needles = 
   Dict.filter (\v a -> (List.member v needles)) haystack
 
+filterVisibleQuick : Dict.Dict comparable a -> List Int -> List a
+filterVisibleQuick haystack needles = 
+  List.filterMap (\v -> Dict.get v haystack) needles
+
 -- The transformation function
 listToDict : (a -> comparable) -> List a -> Dict.Dict comparable a
 listToDict getKey values = Dict.fromList (List.map (\v -> (getKey v, v)) values)
@@ -43,13 +47,14 @@ type alias Model =
     , selectedPodcast: Maybe Int
     , entriesDict : PodcastDict 
     , visiblePodcasts : List Int
+    , subscribedPodcasts : List Int
     }
 
 
 
 init : String -> (Model, Effects Action)
 init topic =
-  ( Model topic "assets/waiting.gif" [] "" Nothing Dict.empty []
+  ( Model topic "assets/waiting.gif" [] "" Nothing Dict.empty [] []
   , Effects.none
   )
 
@@ -61,6 +66,8 @@ type Action
     | UpdateSearchInput String 
     | SelectPodcast (Maybe Int)
     | SetResults (Maybe Collection)
+    | SubscribeToPodcast Int
+    | UnsubscribePodcast Int
 
 
 
@@ -103,6 +110,18 @@ update action model =
         , Effects.none
       )
 
+
+    SubscribeToPodcast id ->
+      ({ model | subscribedPodcasts = List.append [id] model.subscribedPodcasts
+      }
+      , Effects.none
+      )
+
+    UnsubscribePodcast id ->
+      ({ model | subscribedPodcasts = List.append [id] model.subscribedPodcasts
+      }
+      , Effects.none
+      )
 
       --( Model model.topic model.gifUrl (Maybe.withDefault model.entries results) model.searchInput
       --, Effects.none
@@ -202,21 +221,28 @@ podcastList address entries selectedPodcast =
   in
     ul [ class "list-group" ] entryItems
 
-
-
-podcastDisplay : Podcast -> Html
-podcastDisplay podcast = div [ class "page-header" ] [
+podcastDisplay : Signal.Address Action -> Podcast -> Bool -> Html
+podcastDisplay address podcast subscribed = div [ class "page-header" ] [
     h3 [] [ text podcast.name, small [] [ text podcast.aritstName ] ],
-    img [ src podcast.image ] []
+
+    img [ src podcast.image ] [],
+
+    div [] [
+
+      button [ class (if subscribed then "btn btn-primary btn-lg pull-right active" else "btn btn-primary btn-lg pull-right")
+               , onClick address (SubscribeToPodcast podcast.id) 
+              ]
+              [ text "Subscribe" ]
+    ]
   ]
 
-rightColumnDisplay : Signal.Address Action -> Maybe Podcast -> Html
-rightColumnDisplay address podcast = 
+rightColumnDisplay : Signal.Address Action -> Maybe Podcast -> List Int -> Html
+rightColumnDisplay address podcast subscriptionIds = 
   div [] 
       [ 
           case podcast of
-            Just value -> (podcastDisplay value)
-            Nothing -> div [][]
+            Just value -> (podcastDisplay address value) (List.member value.id subscriptionIds)
+            Nothing -> div [][ text "Select a podcast" ]
       ]
 
 
@@ -229,11 +255,11 @@ view address model =
             [ class "container-fluid" ]
             [
               div [ class "col-md-6 col-sm-6 col-lg-6"]
-              [ podcastList address (Dict.values (filterVisible model.entriesDict model.visiblePodcasts)) model.selectedPodcast
+              [ podcastList address (filterVisibleQuick model.entriesDict model.visiblePodcasts) model.selectedPodcast
               ],
               div [ class "col-md-6 col-sm-6 col-lg-6"]
               [
-                rightColumnDisplay address (Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.entriesDict)
+                rightColumnDisplay address (Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.entriesDict) model.subscribedPodcasts
               ]
             ]
         ]
