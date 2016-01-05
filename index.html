@@ -15,6 +15,15 @@
 
 <script type="text/javascript">
 var app = Elm.fullscreen(Elm.Main);
+
+
+  app.ports.modelChanges.subscribe(function (model) {
+
+      console.log(model);
+
+  });
+
+
 </script>
 
 </html>

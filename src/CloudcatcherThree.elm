@@ -27,34 +27,45 @@ type alias Model =
       searchTerm : String
     }
 
+initialModel : Model
+initialModel = Model Dict.empty [] ""
+
 -- UPDATE
 
 type Action 
-    = AddPodcasts PodcastDict 
+    = NoOp 
+    | AddPodcasts PodcastDict 
     | UpdateSearchInput String
     | SubmitSearch String
 
-update : Action -> Model -> (Model, Effects Action)
+--update : Action -> Model -> (Model, Effects Action)
+update : Action -> Model -> Model
 update action model =
-  case action of
+   case action of
+
+    NoOp ->
+        ( model
+        --, Effects.none 
+        )
 
     AddPodcasts new -> 
         ({ model | 
             podcasts = Dict.union new model.podcasts,
             visiblePodcasts = Dict.keys new
          }
-         , Effects.none
+         --, Effects.none
         )
 
     UpdateSearchInput term ->
         ({ model | searchTerm = term }
-         , Effects.none
+         --, Effects.none
         )
 
     SubmitSearch term -> 
         ({ model | searchTerm = term }
-         , getSearchResults term
+         --, getSearchResults term
         )  
+    
 
 -- EFFECTS
 
@@ -145,9 +156,22 @@ searchUrl term =
   Http.url "http://127.0.0.1:9000/v1/podcasts"
     ["term" => term]
 
+
+
+
 -- WIRE UP
 
+-- interactions with localStorage to save the model
+inbox : Signal.Mailbox Action
+inbox =
+  Signal.mailbox NoOp
+
+-- actions from user input
+actions : Signal.Mailbox Action
+actions =
+  Signal.mailbox NoOp
+
 init : (Model, Effects Action)
-init = ( Model Dict.empty [] ""
+init = (  initialModel
         , Effects.none
         )
