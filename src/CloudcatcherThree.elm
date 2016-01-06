@@ -27,8 +27,14 @@ type alias Model =
       searchTerm : String
     }
 
-initialModel : Model
-initialModel = Model Dict.empty [] ""
+type alias ModelOutput = 
+    { podcasts : List Podcast,
+      visiblePodcasts : List Int,
+      searchTerm : String
+    }
+
+emptyModel : Model
+emptyModel = Model Dict.empty [] ""
 
 -- UPDATE
 
@@ -170,8 +176,3 @@ inbox =
 actions : Signal.Mailbox Action
 actions =
   Signal.mailbox NoOp
-
-init : (Model, Effects Action)
-init = (  initialModel
-        , Effects.none
-        )

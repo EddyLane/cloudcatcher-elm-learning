@@ -13,9 +13,18 @@
     "gulp": "^3.9.0",
     "gulp-elm": "^0.2.0",
     "gulp-livereload": "^3.8.1",
-    "gulp-util": "^3.0.7"
+    "gulp-util": "^3.0.7",
+    "jspm": "^0.16.19"
   },
   "dependencies": {
     "bootstrap": "^3.3.6"
+  },
+  "jspm": {
+    "dependencies": {
+      "pouchdb": "github:pouchdb/pouchdb@^5.1.0"
+    },
+    "devDependencies": {
+      "typescript": "npm:typescript@^1.6.2"
+    }
   }
 }

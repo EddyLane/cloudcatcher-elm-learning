@@ -13,17 +13,11 @@
 <body>
 </body>
 
-<script type="text/javascript">
-var app = Elm.fullscreen(Elm.Main);
+<script src="./jspm_packages/system.src.js"></script>
+<script src="./config.js"></script>
 
-
-  app.ports.modelChanges.subscribe(function (model) {
-
-      console.log(model);
-
-  });
-
-
+<script>
+    System.import('./src/ts/index');
 </script>
 
 </html>
