@@ -15,6 +15,8 @@ const initiateElmApp = (getStorage) => {
 
     app.ports.fullModelChanges.subscribe(function (model) {
 
+    	console.log(model);
+
         db.get(STATE_KEY)
             .then(doc => db.put(Object.assign({}, model, {
                 _id: STATE_KEY,

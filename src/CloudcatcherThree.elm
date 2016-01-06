@@ -44,14 +44,13 @@ type Action
     | UpdateSearchInput String
     | SubmitSearch String
 
---update : Action -> Model -> (Model, Effects Action)
-update : Action -> Model -> Model
+update : Action -> Model -> (Model, Effects Action)
 update action model =
    case action of
 
     NoOp ->
         ( model
-        --, Effects.none 
+        , Effects.none 
         )
 
     AddPodcasts new -> 
@@ -59,19 +58,18 @@ update action model =
             podcasts = Dict.union new model.podcasts,
             visiblePodcasts = Dict.keys new
          }
-         --, Effects.none
+         , Effects.none
         )
 
     UpdateSearchInput term ->
         ({ model | searchTerm = term }
-         --, Effects.none
+         , Effects.none
         )
 
     SubmitSearch term -> 
         ({ model | searchTerm = term }
-         --, getSearchResults term
+         , getSearchResults term
         )  
-    
 
 -- EFFECTS
 
@@ -161,9 +159,6 @@ searchUrl : String -> String
 searchUrl term = 
   Http.url "http://127.0.0.1:9000/v1/podcasts"
     ["term" => term]
-
-
-
 
 -- WIRE UP
 
