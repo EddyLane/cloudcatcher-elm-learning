@@ -13,27 +13,19 @@ const initiateElmApp = (getStorage) => {
         getStorage
     });
 
-	// debugger;
+    app.ports.fullModelChanges.subscribe(function (model) {
 
-    // app.ports.tasks.subscribe((model) => {
+        db.get(STATE_KEY)
+            .then(doc => db.put(Object.assign({}, model, {
+                _id: STATE_KEY,
+                _rev: doc._rev
+            })))
+            .catch(e => db.put(Object.assign({}, model, {
+                _id: STATE_KEY
+            })))
+        ;
 
-    // 	console.log(model);
-
-    // });
-
-    // app.ports.fullModelChanges.subscribe(function (model) {
-
-    //     db.get(STATE_KEY)
-    //         .then(doc => db.put(Object.assign({}, model, {
-    //             _id: STATE_KEY,
-    //             _rev: doc._rev
-    //         })))
-    //         .catch(e => db.put(Object.assign({}, model, {
-    //             _id: STATE_KEY
-    //         })))
-    //     ;
-
-    // });
+    });
 
 };
 
