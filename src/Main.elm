@@ -50,25 +50,20 @@ port fullModelChanges =
 
 port getStorage : Maybe CloudcatcherThree.ModelOutput
 
+port tasks : Signal (Task.Task Never ())
+port tasks =
+  app.tasks
+
 --updateStep action (oldModel, accumulatedEffects) =
 --    let
 --        (newModel, additionalEffects) = update action oldModel
 --    in
 --        (newModel, Effects.batch [accumulatedEffects, additionalEffects])
 
-port tasks : Signal (Task.Task Never ())
-port tasks =
-  app.tasks
-
---newUpdate actions (model, _) =
---    List.foldl 
-
 --model : Signal CloudcatcherThree.Model
 --model =
 --  Signal.foldp update initialModel actions.signal
 
-
 --main : Signal Html
 --main =
 --  Signal.map (view actions.address) model
-

@@ -24,17 +24,19 @@ type alias Podcast =
 type alias Model = 
     { podcasts : PodcastDict,
       visiblePodcasts : List Int,
-      searchTerm : String
+      searchTerm : String,
+      selectedPodcast: Maybe Int
     }
 
 type alias ModelOutput = 
     { podcasts : List Podcast,
       visiblePodcasts : List Int,
-      searchTerm : String
+      searchTerm : String,
+      selectedPodcast: Maybe Int
     }
 
 emptyModel : Model
-emptyModel = Model Dict.empty [] ""
+emptyModel = Model Dict.empty [] "" Nothing
 
 -- UPDATE
 
@@ -43,6 +45,7 @@ type Action
     | AddPodcasts PodcastDict 
     | UpdateSearchInput String
     | SubmitSearch String
+    | SelectPodcast (Maybe Int)
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -70,6 +73,11 @@ update action model =
         ({ model | searchTerm = term }
          , getSearchResults term
         )  
+
+    SelectPodcast id ->
+        ({ model | selectedPodcast = id }
+         , Effects.none
+        )
 
 -- EFFECTS
 
@@ -100,6 +108,41 @@ podcasts = "results" := Json.list podcast
 
 -- VIEW
 
+-- RIGHT
+
+--podcastDisplay : Signal.Address Action -> Podcast -> Bool -> Html
+--podcastDisplay address podcast subscribed = 
+--    div [ class "page-header" ] [
+--        h3 [] 
+--           [ text podcast.name, small [] [ text podcast.aritstName ] ],
+--        img [ src podcast.image ] [],
+--        div [ class "btn-toolbar well" ] 
+--            [ button [ class (if subscribed then "btn active" else "btn btn-primary")
+--                     , onClick address (handleClick podcast subscribed) 
+--                     ]  
+--                     [ text (if subscribed then "Unsubscribe" else "Subscribe") ]
+--            ]
+--    ]
+
+--rightColumnDisplay : Signal.Address Action -> Maybe Podcast -> List Int -> List Episode -> Html
+--rightColumnDisplay address podcast subscriptionIds episodes = 
+--  div [] 
+--      [ 
+--          case podcast of
+--            Just value -> (podcastDisplay address value) (List.member value.id subscriptionIds) episodes
+--            Nothing -> div [][ text "Select a podcast" ]
+--      ]
+
+
+-- LEFT
+podcastListItemStyle : Podcast -> Maybe Int -> String
+podcastListItemStyle podcast selectedPodcast = 
+    let 
+        podcastIsActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast == podcast.id
+        podcastClasses active = if active then "list-group-item active" else "list-group-item"
+    in 
+        podcastClasses (podcastIsActive selectedPodcast podcast)
+
 searchForm: Signal.Address Action -> String -> Html
 searchForm address term = 
     div [ class "form-inline" ]
@@ -120,15 +163,17 @@ searchForm address term =
             [ text "Search" ]
         ]
 
-podcastListItem : Podcast-> Html
-podcastListItem podcast = 
-    a  [ href "#" ] 
+podcastListItem : Signal.Address Action -> Maybe Int -> Podcast-> Html
+podcastListItem address selectedPodcast podcast = 
+    a  [ onClick address (SelectPodcast (Just podcast.id)) 
+       , class (podcastListItemStyle podcast selectedPodcast)
+       , href "#" ] 
        [ text podcast.name ]
 
-podcastList: Signal.Address Action -> List Podcast -> Html
-podcastList address entries = 
+podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> Html
+podcastList address entries selectedPodcast = 
   let
-    entryItems = List.map podcastListItem (List.sortBy .name entries)
+    entryItems = List.map (podcastListItem address selectedPodcast) (List.sortBy .name entries)
   in
     div [ class "list-group" ] entryItems
 
@@ -136,12 +181,16 @@ visiblePodcasts : Dict.Dict comparable a -> List Int -> List a
 visiblePodcasts haystack needles = 
   List.filterMap (\v -> Dict.get v haystack) needles
 
+-- MAIN
+
 view : Signal.Address Action -> Model -> Html
 view address model = 
-    div [] 
+    div [ class "container-fluid" ] 
         [ 
-            searchForm address model.searchTerm,
-            podcastList address (visiblePodcasts model.podcasts model.visiblePodcasts) 
+            div [ class "col-md-6 col-sm-6 col-lg-6"]
+            [ searchForm address model.searchTerm,
+              podcastList address (visiblePodcasts model.podcasts model.visiblePodcasts) model.selectedPodcast
+            ]
         ]
 
 -- UTILS
