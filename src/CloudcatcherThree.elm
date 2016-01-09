@@ -51,8 +51,7 @@ type Action
     | UpdateSearchInput String
     | SubmitSearch String
     | SelectPodcast (Maybe Int)
-    | SubscribeToPodcast Int
-    | UnsubscribePodcast Int
+    | TogglePodcastSubscribed Int
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -86,19 +85,14 @@ update action model =
          , Effects.none
         )
 
-    SubscribeToPodcast id ->
-        ({ model | subscribedPodcasts = id :: model.subscribedPodcasts }
-        , Effects.none
-        )
-
-    UnsubscribePodcast id ->
+    TogglePodcastSubscribed id ->
       ( let
-          remainingEntries = List.filter (\e -> e /= id) model.subscribedPodcasts
+          subscribe = { model | subscribedPodcasts = id :: model.subscribedPodcasts }
+          unsubscribe = { model | subscribedPodcasts = List.filter (\e -> e /= id) model.subscribedPodcasts }
         in
-          { model | subscribedPodcasts = remainingEntries }
+          if (List.member id model.subscribedPodcasts) then unsubscribe else subscribe
       , Effects.none
       )
-
 
 -- EFFECTS
 
@@ -149,30 +143,38 @@ searchForm address term =
             [ text "Search" ]
         ]
 
-podcastListItem : Signal.Address Action -> Bool -> Podcast-> Html
-podcastListItem address isSelected podcast = 
+podcastListItem : Signal.Address Action -> Bool -> Bool -> Podcast-> Html
+podcastListItem address isSelected isSubscribed podcast = 
   let
     listItemStyle = if isSelected then "list-group-item active" else "list-group-item"
+    subscribedClass = if isSubscribed then "glyphicon glyphicon-star pull-right" else ""
   in
     a [ href "#",
         onClick address (SelectPodcast (Just podcast.id)), 
         class listItemStyle
       ]
-      [ text podcast.name ]
+      [ text podcast.name,
+        span [ class subscribedClass ] []
+      ]
 
-podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> Html
-podcastList address entries selectedPodcast = 
+podcastList: Signal.Address Action -> List Podcast -> List Int -> Maybe Int -> Html
+podcastList address entries subscribedPodcasts selectedPodcast = 
   let
     isSelected e = e.id == Maybe.withDefault 0 selectedPodcast
-    entryItems = List.map (\e -> (podcastListItem address (isSelected e) e)) (List.sortBy .name entries)
+    isSubscribed e = List.member e.id subscribedPodcasts
+    entryItems = List.map (\e -> (podcastListItem address (isSelected e) (isSubscribed e) e)) (List.sortBy .name entries)
   in
     div [ class "list-group" ] entryItems
 
-podcastDetails: Podcast -> Html
-podcastDetails podcast = 
+podcastDetails: Signal.Address Action -> Bool -> Podcast -> Html
+podcastDetails address subscribed podcast = 
     div [ class "page-header" ] [
       h3 [] [ text podcast.name, small [] [ text podcast.aritstName ] ],
-      img [ src podcast.image ] []
+      img [ src podcast.image ] [],
+      button [ class (if subscribed then "btn active" else "btn btn-primary"),
+               onClick address (TogglePodcastSubscribed podcast.id)
+             ]
+             [ text (if subscribed then "Unsubscribe" else "Subscribe") ]
     ]
 
 
@@ -182,11 +184,11 @@ view : Signal.Address Action -> Model -> Html
 view address model = 
   let
     visiblePodcasts = List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts
-    createPodcastList = podcastList address visiblePodcasts model.selectedPodcast
+    createPodcastList = podcastList address visiblePodcasts model.subscribedPodcasts model.selectedPodcast
     createSearchForm = searchForm address model.searchTerm
     podcastDisplay = 
       case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts  of
-        Just e -> podcastDetails e
+        Just e -> podcastDetails address (List.member e.id model.subscribedPodcasts) e
         Nothing -> div [] []
   in
     div [ class "container-fluid" ] 
