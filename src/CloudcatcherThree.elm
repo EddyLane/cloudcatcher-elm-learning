@@ -21,22 +21,27 @@ type alias Podcast =
       feedUrl : String
     }
 
+type alias Episode = 
+    { title: String }    
+
 type alias Model = 
     { podcasts : PodcastDict,
       visiblePodcasts : List Int,
       searchTerm : String,
-      selectedPodcast: Maybe Int
+      selectedPodcast: Maybe Int,
+      subscribedPodcasts : List Int
     }
 
 type alias ModelOutput = 
     { podcasts : List Podcast,
       visiblePodcasts : List Int,
       searchTerm : String,
-      selectedPodcast: Maybe Int
+      selectedPodcast: Maybe Int,
+      subscribedPodcasts : List Int
     }
 
 emptyModel : Model
-emptyModel = Model Dict.empty [] "" Nothing
+emptyModel = Model Dict.empty [] "" Nothing []
 
 -- UPDATE
 
@@ -46,6 +51,8 @@ type Action
     | UpdateSearchInput String
     | SubmitSearch String
     | SelectPodcast (Maybe Int)
+    | SubscribeToPodcast Int
+    | UnsubscribePodcast Int
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -79,6 +86,20 @@ update action model =
          , Effects.none
         )
 
+    SubscribeToPodcast id ->
+        ({ model | subscribedPodcasts = id :: model.subscribedPodcasts }
+        , Effects.none
+        )
+
+    UnsubscribePodcast id ->
+      ( let
+          remainingEntries = List.filter (\e -> e /= id) model.subscribedPodcasts
+        in
+          { model | subscribedPodcasts = remainingEntries }
+      , Effects.none
+      )
+
+
 -- EFFECTS
 
 handleSearchResults : Maybe (List Podcast) -> Action
@@ -107,34 +128,6 @@ podcasts : Json.Decoder (List Podcast)
 podcasts = "results" := Json.list podcast
 
 -- VIEW
-
--- RIGHT
-
---podcastDisplay : Signal.Address Action -> Podcast -> Bool -> Html
---podcastDisplay address podcast subscribed = 
---    div [ class "page-header" ] [
---        h3 [] 
---           [ text podcast.name, small [] [ text podcast.aritstName ] ],
---        img [ src podcast.image ] [],
---        div [ class "btn-toolbar well" ] 
---            [ button [ class (if subscribed then "btn active" else "btn btn-primary")
---                     , onClick address (handleClick podcast subscribed) 
---                     ]  
---                     [ text (if subscribed then "Unsubscribe" else "Subscribe") ]
---            ]
---    ]
-
---rightColumnDisplay : Signal.Address Action -> Maybe Podcast -> List Int -> List Episode -> Html
---rightColumnDisplay address podcast subscriptionIds episodes = 
---  div [] 
---      [ 
---          case podcast of
---            Just value -> (podcastDisplay address value) (List.member value.id subscriptionIds) episodes
---            Nothing -> div [][ text "Select a podcast" ]
---      ]
-
-
--- LEFT
 
 searchForm: Signal.Address Action -> String -> Html
 searchForm address term = 
@@ -175,6 +168,14 @@ podcastList address entries selectedPodcast =
   in
     div [ class "list-group" ] entryItems
 
+podcastDetails: Podcast -> Html
+podcastDetails podcast = 
+    div [ class "page-header" ] [
+      h3 [] [ text podcast.name, small [] [ text podcast.aritstName ] ],
+      img [ src podcast.image ] []
+    ]
+
+
 -- MAIN
 
 view : Signal.Address Action -> Model -> Html
@@ -183,13 +184,21 @@ view address model =
     visiblePodcasts = List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts
     createPodcastList = podcastList address visiblePodcasts model.selectedPodcast
     createSearchForm = searchForm address model.searchTerm
+    podcastDisplay = 
+      case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts  of
+        Just e -> podcastDetails e
+        Nothing -> div [] []
   in
     div [ class "container-fluid" ] 
         [ 
-            div [ class "col-md-6 col-sm-6 col-lg-6"]
-            [ createSearchForm,
-              createPodcastList
-            ]
+          div [ class "col-md-6 col-sm-6 col-lg-6"]
+          [ createSearchForm,
+            createPodcastList
+          ],
+          div [ class "col-md-6 col-sm-6 col-lg-6"]
+          [
+            podcastDisplay
+          ]
         ]
 
 -- UTILS
@@ -207,15 +216,3 @@ searchUrl : String -> String
 searchUrl term = 
   Http.url "http://127.0.0.1:9000/v1/podcasts"
     ["term" => term]
-
--- WIRE UP
-
--- interactions with localStorage to save the model
-inbox : Signal.Mailbox Action
-inbox =
-  Signal.mailbox NoOp
-
--- actions from user input
-actions : Signal.Mailbox Action
-actions =
-  Signal.mailbox NoOp

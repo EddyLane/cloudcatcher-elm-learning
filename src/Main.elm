@@ -1,6 +1,6 @@
 module Main where
 
-import CloudcatcherThree exposing (update, view, emptyModel, actions, inbox, listToDict)
+import CloudcatcherThree exposing (update, view, emptyModel, listToDict)
 import StartApp
 import Task
 import Effects exposing (Effects, Never)
@@ -11,30 +11,6 @@ import Http
 import Json.Decode as Json exposing(Decoder, (:=))
 import Task exposing (andThen, Task)
 import Dict
-
-initialModel : CloudcatcherThree.Model
-initialModel =
-    let storage = 
-        case getStorage of
-            Just data -> modelDecoder data
-            Nothing -> emptyModel
-    in 
-        storage
-
-init =  ( initialModel
-        , Effects.none
-        )
-
-app =
-  StartApp.start
-    { init = init
-    , update = update
-    , view = view
-    , inputs = []
-    }    
-
-main =
-  app.html
 
 modelDecoder : CloudcatcherThree.ModelOutput -> CloudcatcherThree.Model
 modelDecoder model =
@@ -54,16 +30,19 @@ port tasks : Signal (Task.Task Never ())
 port tasks =
   app.tasks
 
---updateStep action (oldModel, accumulatedEffects) =
---    let
---        (newModel, additionalEffects) = update action oldModel
---    in
---        (newModel, Effects.batch [accumulatedEffects, additionalEffects])
+initialModel : CloudcatcherThree.Model
+initialModel =
+    case getStorage of
+        Just data -> modelDecoder data
+        Nothing -> emptyModel
 
---model : Signal CloudcatcherThree.Model
---model =
---  Signal.foldp update initialModel actions.signal
+app =
+  StartApp.start
+    { init = (initialModel, Effects.none), 
+      update = update, 
+      view = view, 
+      inputs = []
+    }    
 
---main : Signal Html
---main =
---  Signal.map (view actions.address) model
+main =
+  app.html
