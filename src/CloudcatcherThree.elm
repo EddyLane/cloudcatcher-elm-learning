@@ -135,13 +135,6 @@ podcasts = "results" := Json.list podcast
 
 
 -- LEFT
-podcastListItemStyle : Podcast -> Maybe Int -> String
-podcastListItemStyle podcast selectedPodcast = 
-    let 
-        podcastIsActive selectedPodcast podcast = Maybe.withDefault 0 selectedPodcast == podcast.id
-        podcastClasses active = if active then "list-group-item active" else "list-group-item"
-    in 
-        podcastClasses (podcastIsActive selectedPodcast podcast)
 
 searchForm: Signal.Address Action -> String -> Html
 searchForm address term = 
@@ -163,33 +156,39 @@ searchForm address term =
             [ text "Search" ]
         ]
 
-podcastListItem : Signal.Address Action -> Maybe Int -> Podcast-> Html
-podcastListItem address selectedPodcast podcast = 
-    a  [ onClick address (SelectPodcast (Just podcast.id)) 
-       , class (podcastListItemStyle podcast selectedPodcast)
-       , href "#" ] 
-       [ text podcast.name ]
+podcastListItem : Signal.Address Action -> Bool -> Podcast-> Html
+podcastListItem address isSelected podcast = 
+  let
+    listItemStyle = if isSelected then "list-group-item active" else "list-group-item"
+  in
+    a [ href "#",
+        onClick address (SelectPodcast (Just podcast.id)), 
+        class listItemStyle
+      ]
+      [ text podcast.name ]
 
 podcastList: Signal.Address Action -> List Podcast -> Maybe Int -> Html
 podcastList address entries selectedPodcast = 
   let
-    entryItems = List.map (podcastListItem address selectedPodcast) (List.sortBy .name entries)
+    isSelected e = e.id == Maybe.withDefault 0 selectedPodcast
+    entryItems = List.map (\e -> (podcastListItem address (isSelected e) e)) (List.sortBy .name entries)
   in
     div [ class "list-group" ] entryItems
-
-visiblePodcasts : Dict.Dict comparable a -> List Int -> List a
-visiblePodcasts haystack needles = 
-  List.filterMap (\v -> Dict.get v haystack) needles
 
 -- MAIN
 
 view : Signal.Address Action -> Model -> Html
 view address model = 
+  let
+    visiblePodcasts = List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts
+    createPodcastList = podcastList address visiblePodcasts model.selectedPodcast
+    createSearchForm = searchForm address model.searchTerm
+  in
     div [ class "container-fluid" ] 
         [ 
             div [ class "col-md-6 col-sm-6 col-lg-6"]
-            [ searchForm address model.searchTerm,
-              podcastList address (visiblePodcasts model.podcasts model.visiblePodcasts) model.selectedPodcast
+            [ createSearchForm,
+              createPodcastList
             ]
         ]
 
