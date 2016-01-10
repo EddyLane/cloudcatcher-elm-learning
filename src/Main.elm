@@ -1,6 +1,6 @@
 module Main where
 
-import CloudcatcherThree exposing (update, view, emptyModel, listToDict)
+import CloudcatcherThree exposing (update, view, emptyModel, listToDict, modelDecoder, modelEncoder)
 import StartApp
 import Task
 import Effects exposing (Effects, Never)
@@ -12,13 +12,6 @@ import Json.Decode as Json exposing(Decoder, (:=))
 import Task exposing (andThen, Task)
 import Dict
 
-modelDecoder : CloudcatcherThree.ModelOutput -> CloudcatcherThree.Model
-modelDecoder model =
-    { model | podcasts = listToDict .id model.podcasts }
-
-modelEncoder : CloudcatcherThree.Model -> CloudcatcherThree.ModelOutput
-modelEncoder model =
-    { model | podcasts = Dict.values model.podcasts }
 
 port fullModelChanges : Signal CloudcatcherThree.ModelOutput
 port fullModelChanges = 

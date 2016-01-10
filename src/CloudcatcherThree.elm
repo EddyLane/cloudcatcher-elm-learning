@@ -13,6 +13,8 @@ import Dict
 
 type alias PodcastDict = Dict.Dict Int Podcast
 
+type Visibility = All | Subscribed
+
 type alias Podcast =
     { name : String, 
       aritstName : String, 
@@ -27,21 +29,25 @@ type alias Episode =
 type alias Model = 
     { podcasts : PodcastDict,
       visiblePodcasts : List Int,
+      visibility : Visibility,
       searchTerm : String,
       selectedPodcast: Maybe Int,
-      subscribedPodcasts : List Int
+      subscribedPodcasts : List Int,
+      searchResults : List Int
     }
 
 type alias ModelOutput = 
     { podcasts : List Podcast,
       visiblePodcasts : List Int,
+      visibility : String,
       searchTerm : String,
       selectedPodcast: Maybe Int,
-      subscribedPodcasts : List Int
+      subscribedPodcasts : List Int,
+      searchResults : List Int
     }
 
 emptyModel : Model
-emptyModel = Model Dict.empty [] "" Nothing []
+emptyModel = Model Dict.empty [] All "" Nothing [] []
 
 -- UPDATE
 
@@ -52,6 +58,7 @@ type Action
     | SubmitSearch String
     | SelectPodcast (Maybe Int)
     | TogglePodcastSubscribed Int
+    | ToggleSubscriptionView
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -65,7 +72,8 @@ update action model =
     AddPodcasts new -> 
         ({ model | 
             podcasts = Dict.union new model.podcasts,
-            visiblePodcasts = Dict.keys new
+            visiblePodcasts = Dict.keys new,
+            searchResults = Dict.keys new
          }
          , Effects.none
         )
@@ -83,6 +91,21 @@ update action model =
     SelectPodcast id ->
         ({ model | selectedPodcast = id }
          , Effects.none
+        )
+
+    ToggleSubscriptionView ->
+        ( let 
+            getVisiblity v = 
+              if v == All then Subscribed else All
+            getVisiblePodcasts v =  
+              if v == Subscribed then model.searchResults else model.subscribedPodcasts
+
+          in 
+            { model | 
+                visibility = getVisiblity model.visibility,
+                visiblePodcasts = getVisiblePodcasts model.visibility
+            }    
+          , Effects.none
         )
 
     TogglePodcastSubscribed id ->
@@ -157,24 +180,38 @@ podcastListItem address isSelected isSubscribed podcast =
         span [ class subscribedClass ] []
       ]
 
-podcastList: Signal.Address Action -> List Podcast -> List Int -> Maybe Int -> Html
-podcastList address entries subscribedPodcasts selectedPodcast = 
+podcastListNav : Signal.Address Action -> Visibility -> Html
+podcastListNav address visibility = 
+  ul [ class "nav nav-tabs" ] 
+     [ li [ class (if visibility == Subscribed then "active" else ""), onClick address ToggleSubscriptionView ] [ a [ href "#" ] [ text "Subscriptions" ] ],
+       li [ class (if visibility == All then "active" else ""), onClick address ToggleSubscriptionView ] [ a [ href "#" ] [ text "Search Results" ] ]
+     ]
+
+podcastList: Signal.Address Action -> Visibility -> List Podcast -> List Int -> Maybe Int -> Html
+podcastList address visibility entries subscribedPodcasts selectedPodcast = 
   let
     isSelected e = e.id == Maybe.withDefault 0 selectedPodcast
     isSubscribed e = List.member e.id subscribedPodcasts
     entryItems = List.map (\e -> (podcastListItem address (isSelected e) (isSubscribed e) e)) (List.sortBy .name entries)
   in
-    div [ class "list-group" ] entryItems
+    div []
+        [ podcastListNav address visibility,
+          div [ class "list-group" ] entryItems
+        ]
 
 podcastDetails: Signal.Address Action -> Bool -> Podcast -> Html
 podcastDetails address subscribed podcast = 
+  let 
+    buttonClasses = if subscribed then "btn active" else "btn btn-primary"
+    buttonText = if subscribed then "Unsubscribe" else "Subscribe"
+  in
     div [ class "page-header" ] [
       h3 [] [ text podcast.name, small [] [ text podcast.aritstName ] ],
       img [ src podcast.image ] [],
-      button [ class (if subscribed then "btn active" else "btn btn-primary"),
+      button [ class buttonClasses,
                onClick address (TogglePodcastSubscribed podcast.id)
              ]
-             [ text (if subscribed then "Unsubscribe" else "Subscribe") ]
+             [ text buttonText ]
     ]
 
 
@@ -184,7 +221,7 @@ view : Signal.Address Action -> Model -> Html
 view address model = 
   let
     visiblePodcasts = List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts
-    createPodcastList = podcastList address visiblePodcasts model.subscribedPodcasts model.selectedPodcast
+    createPodcastList = podcastList address model.visibility visiblePodcasts model.subscribedPodcasts model.selectedPodcast
     createSearchForm = searchForm address model.searchTerm
     podcastDisplay = 
       case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts  of
@@ -218,3 +255,21 @@ searchUrl : String -> String
 searchUrl term = 
   Http.url "http://127.0.0.1:9000/v1/podcasts"
     ["term" => term]
+
+modelDecoder : ModelOutput -> Model
+modelDecoder model =
+    let 
+      visiblityConverter = if model.visibility == "All" then All else Subscribed
+    in
+      { model | 
+          podcasts = listToDict .id model.podcasts,
+          visibility = visiblityConverter
+      }
+
+modelEncoder : Model -> ModelOutput
+modelEncoder model =
+    { model | 
+          podcasts = Dict.values model.podcasts,
+          visibility = toString model.visibility
+    }
+
