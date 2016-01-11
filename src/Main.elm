@@ -17,6 +17,14 @@ port fullModelChanges : Signal CloudcatcherThree.ModelOutput
 port fullModelChanges = 
     Signal.map modelEncoder app.model
 
+getImages : CloudcatcherThree.Model -> List String
+getImages model = 
+  List.map .image (List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts)
+
+port incomingImages : Signal (List String)
+port incomingImages = 
+    Signal.map getImages app.model
+
 port getStorage : Maybe CloudcatcherThree.ModelOutput
 
 port tasks : Signal (Task.Task Never ())

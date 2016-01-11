@@ -21,7 +21,8 @@
   },
   "jspm": {
     "dependencies": {
-      "pouchdb": "github:pouchdb/pouchdb@^5.1.0"
+      "pouchdb": "github:pouchdb/pouchdb@^5.1.0",
+      "pouchdb-lru-cache": "npm:pouchdb-lru-cache@^1.1.4"
     },
     "devDependencies": {
       "typescript": "npm:typescript@^1.6.2"
