@@ -98,7 +98,10 @@ update action model =
         )
 
     SubmitSearch term -> 
-        ({ model | searchTerm = term }
+        ({ model | 
+            searchTerm = term,
+            visibility = All
+          }
          , getSearchResults term
         )  
 
@@ -213,15 +216,16 @@ podcastList address visibility entries subscribedPodcasts selectedPodcast =
           div [ class "list-group" ] entryItems
         ]
 
-podcastDetails: Signal.Address Action -> Bool -> Podcast -> Html
-podcastDetails address subscribed podcast = 
+podcastDetails: Signal.Address Action -> Bool -> Maybe String -> Podcast -> Html
+podcastDetails address subscribed maybeImage podcast = 
   let 
     buttonClasses = if subscribed then "btn active" else "btn btn-primary"
     buttonText = if subscribed then "Unsubscribe" else "Subscribe"
+    imageData = Maybe.withDefault "" maybeImage
   in
     div [ class "page-header" ] [
       h3 [] [ text podcast.name, small [] [ text podcast.aritstName ] ],
-      img [ src podcast.image ] [],
+      img [ src imageData ] [],
       button [ class buttonClasses,
                onClick address (TogglePodcastSubscribed podcast.id)
              ]
@@ -239,7 +243,7 @@ view address model =
     createSearchForm = searchForm address model.searchTerm
     podcastDisplay = 
       case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts  of
-        Just e -> podcastDetails address (List.member e.id model.subscribedPodcasts) e
+        Just e -> podcastDetails address (List.member e.id model.subscribedPodcasts) (Dict.get e.image model.images) e
         Nothing -> div [] []
   in
     div [ class "container-fluid" ] 

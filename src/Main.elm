@@ -13,7 +13,7 @@ import Task exposing (andThen, Task)
 import Dict
 import Debug
 
-
+ 
 port fullModelChanges : Signal CloudcatcherThree.ModelOutput
 port fullModelChanges = 
     Signal.map modelEncoder app.model
@@ -39,7 +39,7 @@ port addImageTwo : Signal CloudcatcherThree.LocalImage
 
 --addImageLogger = Signal.map logger addImage
 
-addImageTwoLogger = Signal.dropRepeats (Signal.map AddImage addImageTwo)
+addImageTwoLogger = Signal.map AddImage addImageTwo
 
 
 initialModel : CloudcatcherThree.Model
