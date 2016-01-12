@@ -15,47 +15,85 @@ imageDb.initLru(0); // no limit
 
 const STATE_KEY = 'state';
 
+imageDb.lru.info().then(function (info) {
+	console.debug(info);
+});
+
 const initiateElmApp = getStorage => {
 
-	const app = Elm.fullscreen(Elm.Main, { getStorage });
+	const app = Elm.fullscreen(Elm.Main, { getStorage, addImageTwo: { uri: "Banter", data: "Boobs" } });
 
-    app.ports.fullModelChanges.subscribe((model) => {
-        db.get(STATE_KEY)
-        .then(doc => db.put(Object.assign({}, model, {
-            _id: STATE_KEY,
-            _rev: doc._rev
-        })))
-        .catch(e => db.put(Object.assign({}, model, {
-            _id: STATE_KEY
-        })))
-        ;
-    });
+	app.ports.fullModelChanges.subscribe((model) => {
 
-    app.ports.incomingImages.subscribe((images) => {
-        Promise.all(images.map(loadImage)).then((images) => {
-					images.forEach((image) => imageDb.lru.put(image.uri, image.blob, { type: 'image/jpeg' }););
-        );
-    });
+		console.log(model);
+		db.get(STATE_KEY)
+		.then(doc => db.put(Object.assign({}, model, {
+			_id: STATE_KEY,
+			_rev: doc._rev
+		})))
+		.catch(e => db.put(Object.assign({}, model, {
+			_id: STATE_KEY
+		})))
+		;
+	});
+
+
+	app.ports.incomingImages.subscribe((images) => {
+		console.debug('Incoming images', images);
+			getAllImages(images).then(imageData => imageData.map(imageData => {
+					return app.ports.addImageTwo.send(imageData);
+			}))
+	});
 
 };
 
+
+
+const getAllImages = images => {
+
+	return Promise.all(images.map(uri => {
+		return imageDb.lru.has(uri).then(exists => {
+			if (exists) {
+				return retrieveImage(uri);
+			} else {
+				return loadImage(uri);
+			}
+		});
+	}))
+
+}
+
+
 const retrieveImage = uri => new Promise((resolve, reject) => {
+
+console.log('retrieving', uri);
+
 	const fileReader = new FileReader();
-	fileReader.onload = (evt) => resolve(evt.target.result);
-	imageDb.lru.get(uri).then((blob) => fileReader.readAsDataUrl(blob));
+	fileReader.onload = evt => {
+		resolve({
+			uri,
+			data: evt.target.result
+		});
+	};
+	imageDb.lru.get(uri).then((blob) => fileReader.readAsDataURL(blob));
 });
 
 const loadImage = uri => new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.responseType = 'blob';
-    xhr.onload = () => resolve({
-			uri,
-			blob: new Blob([xhr.response], { type: "image/jpeg" })
-		});
-    xhr.open('GET', uri, true);
-    xhr.send();
+	console.log('loading', uri);
+
+	const xhr = new XMLHttpRequest();
+	xhr.responseType = 'blob';
+
+	xhr.onload = () => {
+		imageDb.lru.put(uri, blob, { type: 'image/jpeg' });
+		resolve(retrieveImage(uri));
+	};
+
+	xhr.open('GET', uri, true);
+	xhr.send();
+
 });
 
 db.get(STATE_KEY)
-	.then(doc => initiateElmApp(doc))
-	.catch(err => initiateElmApp(null));
+.then(doc => initiateElmApp(doc))
+.catch(err => initiateElmApp(null));

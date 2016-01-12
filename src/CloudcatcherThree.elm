@@ -15,6 +15,13 @@ type alias PodcastDict = Dict.Dict Int Podcast
 
 type Visibility = All | Subscribed
 
+type alias LocalImage = 
+  {
+    uri: String,
+    data: String
+  }
+
+
 type alias Podcast =
     { name : String, 
       aritstName : String, 
@@ -33,7 +40,8 @@ type alias Model =
       searchTerm : String,
       selectedPodcast: Maybe Int,
       subscribedPodcasts : List Int,
-      searchResults : List Int
+      searchResults : List Int,
+      images: Dict.Dict String String
     }
 
 type alias ModelOutput = 
@@ -43,16 +51,17 @@ type alias ModelOutput =
       searchTerm : String,
       selectedPodcast: Maybe Int,
       subscribedPodcasts : List Int,
-      searchResults : List Int
+      searchResults : List Int,
+      images: List String
     }
 
 emptyModel : Model
-emptyModel = Model Dict.empty [] All "" Nothing [] []
-
+emptyModel = Model Dict.empty [] All "" Nothing [] [] Dict.empty
 -- UPDATE
 
 type Action 
     = NoOp 
+    | AddImage LocalImage
     | AddPodcasts PodcastDict 
     | UpdateSearchInput String
     | SubmitSearch String
@@ -63,6 +72,11 @@ type Action
 update : Action -> Model -> (Model, Effects Action)
 update action model =
    case action of
+
+    AddImage image ->
+        ({ model | images = Dict.insert image.uri image.data model.images }
+        , Effects.none 
+        )
 
     NoOp ->
         ( model
@@ -262,6 +276,7 @@ modelDecoder model =
       visiblityConverter = if model.visibility == "All" then All else Subscribed
     in
       { model | 
+          images = Dict.empty,
           podcasts = listToDict .id model.podcasts,
           visibility = visiblityConverter
       }
@@ -269,6 +284,7 @@ modelDecoder model =
 modelEncoder : Model -> ModelOutput
 modelEncoder model =
     { model | 
+          images = Dict.keys model.images,
           podcasts = Dict.values model.podcasts,
           visibility = toString model.visibility
     }

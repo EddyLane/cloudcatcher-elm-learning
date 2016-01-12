@@ -1,6 +1,6 @@
 module Main where
 
-import CloudcatcherThree exposing (update, view, emptyModel, listToDict, modelDecoder, modelEncoder)
+import CloudcatcherThree exposing (update, view, emptyModel, listToDict, modelDecoder, modelEncoder, Action(..))
 import StartApp
 import Task
 import Effects exposing (Effects, Never)
@@ -11,6 +11,7 @@ import Http
 import Json.Decode as Json exposing(Decoder, (:=))
 import Task exposing (andThen, Task)
 import Dict
+import Debug
 
 
 port fullModelChanges : Signal CloudcatcherThree.ModelOutput
@@ -23,7 +24,7 @@ getImages model =
 
 port incomingImages : Signal (List String)
 port incomingImages = 
-    Signal.map getImages app.model
+    Signal.dropRepeats (Signal.map getImages app.model)
 
 port getStorage : Maybe CloudcatcherThree.ModelOutput
 
@@ -31,18 +32,34 @@ port tasks : Signal (Task.Task Never ())
 port tasks =
   app.tasks
 
+--port addImage : Signal (Maybe LocalImage)
+
+port addImageTwo : Signal CloudcatcherThree.LocalImage
+
+
+--addImageLogger = Signal.map logger addImage
+
+addImageTwoLogger = Signal.dropRepeats (Signal.map AddImage addImageTwo)
+
+
 initialModel : CloudcatcherThree.Model
 initialModel =
     case getStorage of
         Just data -> modelDecoder data
         Nothing -> emptyModel
 
+logger val = 
+  case val of
+    Just data -> (Debug.log "what" data.uri)
+    Nothing -> (Debug.log "what" "eh")
+
+
 app =
   StartApp.start
     { init = (initialModel, Effects.none), 
       update = update, 
       view = view, 
-      inputs = []
+      inputs = [addImageTwoLogger]
     }    
 
 main =
