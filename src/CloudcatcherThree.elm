@@ -226,12 +226,14 @@ podcastList address visibility entries subscribedPodcasts images selectedPodcast
     isSelected e = e.id == Maybe.withDefault 0 selectedPodcast
     isSubscribed e = List.member e.id subscribedPodcasts
     getImage e = Dict.get e.image images
-    sorted = List.sortBy .name entries
+
     item e = podcastListItem address (isSelected e) (isSubscribed e) (getImage e) e
+    items = List.sortBy .name entries |> List.map item
+
   in
     div []
         [ podcastListNav address visibility,
-          div [ class "list-group" ] (List.map item sorted)
+          div [ class "list-group" ] items
         ]
 
 podcastDetails: Signal.Address Action -> Bool -> Maybe String -> Podcast -> Html
@@ -255,7 +257,10 @@ podcastDetails address subscribed maybeImage podcast =
 view : Signal.Address Action -> Model -> Html
 view address model = 
   let
-    visiblePodcasts = List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts
+    visiblePodcasts 
+        = model.visiblePodcasts 
+          |> List.filterMap (\v -> Dict.get v model.podcasts) 
+          
     createPodcastList = podcastList address model.visibility visiblePodcasts model.subscribedPodcasts model.images model.selectedPodcast
     createSearchForm = searchForm address model.searchTerm
 

@@ -11211,128 +11211,26 @@ Elm.CloudcatcherThree.make = function (_elm) {
                                           ,modelDecoder: modelDecoder
                                           ,modelEncoder: modelEncoder};
 };
-Elm.Main = Elm.Main || {};
-Elm.Main.make = function (_elm) {
+Elm.MainDebug = Elm.MainDebug || {};
+Elm.MainDebug.make = function (_elm) {
    "use strict";
-   _elm.Main = _elm.Main || {};
-   if (_elm.Main.values) return _elm.Main.values;
+   _elm.MainDebug = _elm.MainDebug || {};
+   if (_elm.MainDebug.values) return _elm.MainDebug.values;
    var _U = Elm.Native.Utils.make(_elm),
    $Basics = Elm.Basics.make(_elm),
    $CloudcatcherThree = Elm.CloudcatcherThree.make(_elm),
    $Debug = Elm.Debug.make(_elm),
-   $Dict = Elm.Dict.make(_elm),
    $Effects = Elm.Effects.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm),
-   $StartApp = Elm.StartApp.make(_elm),
-   $Task = Elm.Task.make(_elm);
+   $StartApp = Elm.StartApp.make(_elm);
    var _op = {};
-   var logger = function (val) {
-      var _p0 = val;
-      if (_p0.ctor === "Just") {
-            return A2($Debug.log,"what",_p0._0.uri);
-         } else {
-            return A2($Debug.log,"what","eh");
-         }
-   };
-   var addImageTwo = Elm.Native.Port.make(_elm).inboundSignal("addImageTwo",
-   "CloudcatcherThree.LocalImage",
-   function (v) {
-      return typeof v === "object" && "uri" in v && "data" in v ? {_: {}
-                                                                  ,uri: typeof v.uri === "string" || typeof v.uri === "object" && v.uri instanceof String ? v.uri : _U.badPort("a string",
-                                                                  v.uri)
-                                                                  ,data: typeof v.data === "string" || typeof v.data === "object" && v.data instanceof String ? v.data : _U.badPort("a string",
-                                                                  v.data)} : _U.badPort("an object with fields `uri`, `data`",v);
-   });
-   var addImageTwoLogger = A2($Signal.map,$CloudcatcherThree.AddImage,addImageTwo);
-   var getStorage = Elm.Native.Port.make(_elm).inbound("getStorage",
-   "Maybe.Maybe\n    CloudcatcherThree.ModelOutput",
-   function (v) {
-      return v === null ? Elm.Maybe.make(_elm).Nothing : Elm.Maybe.make(_elm).Just(typeof v === "object" && "podcasts" in v && "visiblePodcasts" in v && "visibility" in v && "searchTerm" in v && "selectedPodcast" in v && "subscribedPodcasts" in v && "searchResults" in v && "images" in v ? {_: {}
-                                                                                                                                                                                                                                                                                                  ,podcasts: typeof v.podcasts === "object" && v.podcasts instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.podcasts.map(function (v) {
-                                                                                                                                                                                                                                                                                                     return typeof v === "object" && "name" in v && "aritstName" in v && "image" in v && "id" in v && "feedUrl" in v ? {_: {}
-                                                                                                                                                                                                                                                                                                                                                                                                                       ,name: typeof v.name === "string" || typeof v.name === "object" && v.name instanceof String ? v.name : _U.badPort("a string",
-                                                                                                                                                                                                                                                                                                                                                                                                                       v.name)
-                                                                                                                                                                                                                                                                                                                                                                                                                       ,aritstName: typeof v.aritstName === "string" || typeof v.aritstName === "object" && v.aritstName instanceof String ? v.aritstName : _U.badPort("a string",
-                                                                                                                                                                                                                                                                                                                                                                                                                       v.aritstName)
-                                                                                                                                                                                                                                                                                                                                                                                                                       ,image: typeof v.image === "string" || typeof v.image === "object" && v.image instanceof String ? v.image : _U.badPort("a string",
-                                                                                                                                                                                                                                                                                                                                                                                                                       v.image)
-                                                                                                                                                                                                                                                                                                                                                                                                                       ,id: typeof v.id === "number" && isFinite(v.id) && Math.floor(v.id) === v.id ? v.id : _U.badPort("an integer",
-                                                                                                                                                                                                                                                                                                                                                                                                                       v.id)
-                                                                                                                                                                                                                                                                                                                                                                                                                       ,feedUrl: typeof v.feedUrl === "string" || typeof v.feedUrl === "object" && v.feedUrl instanceof String ? v.feedUrl : _U.badPort("a string",
-                                                                                                                                                                                                                                                                                                                                                                                                                       v.feedUrl)} : _U.badPort("an object with fields `name`, `aritstName`, `image`, `id`, `feedUrl`",
-                                                                                                                                                                                                                                                                                                     v);
-                                                                                                                                                                                                                                                                                                  })) : _U.badPort("an array",
-                                                                                                                                                                                                                                                                                                  v.podcasts)
-                                                                                                                                                                                                                                                                                                  ,visiblePodcasts: typeof v.visiblePodcasts === "object" && v.visiblePodcasts instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.visiblePodcasts.map(function (v) {
-                                                                                                                                                                                                                                                                                                     return typeof v === "number" && isFinite(v) && Math.floor(v) === v ? v : _U.badPort("an integer",
-                                                                                                                                                                                                                                                                                                     v);
-                                                                                                                                                                                                                                                                                                  })) : _U.badPort("an array",
-                                                                                                                                                                                                                                                                                                  v.visiblePodcasts)
-                                                                                                                                                                                                                                                                                                  ,visibility: typeof v.visibility === "string" || typeof v.visibility === "object" && v.visibility instanceof String ? v.visibility : _U.badPort("a string",
-                                                                                                                                                                                                                                                                                                  v.visibility)
-                                                                                                                                                                                                                                                                                                  ,searchTerm: typeof v.searchTerm === "string" || typeof v.searchTerm === "object" && v.searchTerm instanceof String ? v.searchTerm : _U.badPort("a string",
-                                                                                                                                                                                                                                                                                                  v.searchTerm)
-                                                                                                                                                                                                                                                                                                  ,selectedPodcast: v.selectedPodcast === null ? Elm.Maybe.make(_elm).Nothing : Elm.Maybe.make(_elm).Just(typeof v.selectedPodcast === "number" && isFinite(v.selectedPodcast) && Math.floor(v.selectedPodcast) === v.selectedPodcast ? v.selectedPodcast : _U.badPort("an integer",
-                                                                                                                                                                                                                                                                                                  v.selectedPodcast))
-                                                                                                                                                                                                                                                                                                  ,subscribedPodcasts: typeof v.subscribedPodcasts === "object" && v.subscribedPodcasts instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.subscribedPodcasts.map(function (v) {
-                                                                                                                                                                                                                                                                                                     return typeof v === "number" && isFinite(v) && Math.floor(v) === v ? v : _U.badPort("an integer",
-                                                                                                                                                                                                                                                                                                     v);
-                                                                                                                                                                                                                                                                                                  })) : _U.badPort("an array",
-                                                                                                                                                                                                                                                                                                  v.subscribedPodcasts)
-                                                                                                                                                                                                                                                                                                  ,searchResults: typeof v.searchResults === "object" && v.searchResults instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.searchResults.map(function (v) {
-                                                                                                                                                                                                                                                                                                     return typeof v === "number" && isFinite(v) && Math.floor(v) === v ? v : _U.badPort("an integer",
-                                                                                                                                                                                                                                                                                                     v);
-                                                                                                                                                                                                                                                                                                  })) : _U.badPort("an array",
-                                                                                                                                                                                                                                                                                                  v.searchResults)
-                                                                                                                                                                                                                                                                                                  ,images: typeof v.images === "object" && v.images instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.images.map(function (v) {
-                                                                                                                                                                                                                                                                                                     return typeof v === "string" || typeof v === "object" && v instanceof String ? v : _U.badPort("a string",
-                                                                                                                                                                                                                                                                                                     v);
-                                                                                                                                                                                                                                                                                                  })) : _U.badPort("an array",
-                                                                                                                                                                                                                                                                                                  v.images)} : _U.badPort("an object with fields `podcasts`, `visiblePodcasts`, `visibility`, `searchTerm`, `selectedPodcast`, `subscribedPodcasts`, `searchResults`, `images`",
-      v));
-   });
-   var initialModel = function () {
-      var _p1 = getStorage;
-      if (_p1.ctor === "Just") {
-            return $CloudcatcherThree.modelDecoder(_p1._0);
-         } else {
-            return $CloudcatcherThree.emptyModel;
-         }
-   }();
-   var app = $StartApp.start({init: {ctor: "_Tuple2",_0: initialModel,_1: $Effects.none}
+   var app = $StartApp.start({init: {ctor: "_Tuple2",_0: $CloudcatcherThree.emptyModel,_1: $Effects.none}
                              ,update: $CloudcatcherThree.update
                              ,view: $CloudcatcherThree.view
-                             ,inputs: _U.list([addImageTwoLogger])});
-   var tasks = Elm.Native.Task.make(_elm).performSignal("tasks",app.tasks);
+                             ,inputs: _U.list([])});
    var main = app.html;
-   var getImages = function (model) {
-      return A2($List.map,
-      function (_) {
-         return _.image;
-      },
-      A2($List.filterMap,function (v) {    return A2($Dict.get,v,model.podcasts);},model.visiblePodcasts));
-   };
-   var incomingImages = Elm.Native.Port.make(_elm).outboundSignal("incomingImages",
-   function (v) {
-      return Elm.Native.List.make(_elm).toArray(v).map(function (v) {    return v;});
-   },
-   $Signal.dropRepeats(A2($Signal.map,getImages,app.model)));
-   var fullModelChanges = Elm.Native.Port.make(_elm).outboundSignal("fullModelChanges",
-   function (v) {
-      return {podcasts: Elm.Native.List.make(_elm).toArray(v.podcasts).map(function (v) {
-                return {name: v.name,aritstName: v.aritstName,image: v.image,id: v.id,feedUrl: v.feedUrl};
-             })
-             ,visiblePodcasts: Elm.Native.List.make(_elm).toArray(v.visiblePodcasts).map(function (v) {    return v;})
-             ,visibility: v.visibility
-             ,searchTerm: v.searchTerm
-             ,selectedPodcast: v.selectedPodcast.ctor === "Nothing" ? null : v.selectedPodcast._0
-             ,subscribedPodcasts: Elm.Native.List.make(_elm).toArray(v.subscribedPodcasts).map(function (v) {    return v;})
-             ,searchResults: Elm.Native.List.make(_elm).toArray(v.searchResults).map(function (v) {    return v;})
-             ,images: Elm.Native.List.make(_elm).toArray(v.images).map(function (v) {    return v;})};
-   },
-   A2($Signal.map,$CloudcatcherThree.modelEncoder,app.model));
-   return _elm.Main.values = {_op: _op,getImages: getImages,addImageTwoLogger: addImageTwoLogger,initialModel: initialModel,logger: logger,app: app,main: main};
+   return _elm.MainDebug.values = {_op: _op,app: app,main: main};
 };

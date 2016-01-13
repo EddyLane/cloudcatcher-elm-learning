@@ -19,23 +19,25 @@ port fullModelChanges =
 
 
 getImages : CloudcatcherThree.Model -> List String
-getImages model = model.visiblePodcasts 
-                  |> List.filterMap (\v -> Dict.get v model.podcasts) 
-                  |> List.map .image
+getImages model = 
+    model.visiblePodcasts 
+      |> List.filterMap (\v -> Dict.get v model.podcasts) 
+      |> List.map .image
 
 port incomingImages : Signal (List String)
 port incomingImages = 
-    Signal.map getImages app.model |> Signal.dropRepeats
+    app.model 
+      |> Signal.map getImages 
+      |> Signal.dropRepeats
 
 port getStorage : Maybe CloudcatcherThree.ModelOutput
 
 port tasks : Signal (Task.Task Never ())
-port tasks =
-  app.tasks
+port tasks = app.tasks
 
-port addImageTwo : Signal CloudcatcherThree.LocalImage
+port images : Signal CloudcatcherThree.LocalImage
 
-addImageTwoLogger = Signal.map AddImage addImageTwo
+addImage = Signal.map AddImage images
 
 initialModel : CloudcatcherThree.Model
 initialModel =
@@ -48,7 +50,7 @@ app =
     { init = (initialModel, Effects.none), 
       update = update, 
       view = view, 
-      inputs = [addImageTwoLogger]
+      inputs = [addImage]
     }    
 
 main =
