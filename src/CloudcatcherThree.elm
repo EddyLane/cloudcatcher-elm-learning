@@ -127,11 +127,24 @@ update action model =
 
     TogglePodcastSubscribed id ->
       ( let
-          subscribe = { model | subscribedPodcasts = id :: model.subscribedPodcasts }
-          unsubscribe = { model | subscribedPodcasts = List.filter (\e -> e /= id) model.subscribedPodcasts }
+          subscribe = 
+            { model | 
+                subscribedPodcasts = id :: model.subscribedPodcasts,
+                visiblePodcasts = if model.visibility == All 
+                                  then model.visiblePodcasts 
+                                  else id :: model.visiblePodcasts
+            }
+          unsubscribe = 
+            { model | 
+                subscribedPodcasts = List.filter (\e -> e /= id) model.subscribedPodcasts, 
+                visiblePodcasts = if model.visibility == All 
+                                  then model.visiblePodcasts 
+                                  else List.filter (\e -> e /= id) model.subscribedPodcasts
+            }
+          toggle = if (List.member id model.subscribedPodcasts) then unsubscribe else subscribe
         in
-          if (List.member id model.subscribedPodcasts) then unsubscribe else subscribe
-      , Effects.none
+          toggle
+        , Effects.none
       )
 
 -- EFFECTS
@@ -140,7 +153,7 @@ handleSearchResults : Maybe (List Podcast) -> Action
 handleSearchResults podcast = 
     case podcast of
         Just e -> AddPodcasts (listToDict .id e)
-        Nothing -> AddPodcasts Dict.empty
+        Nothing -> NoOp
 
 getSearchResults : String -> Effects Action
 getSearchResults query = 
@@ -183,17 +196,20 @@ searchForm address term =
             [ text "Search" ]
         ]
 
-podcastListItem : Signal.Address Action -> Bool -> Bool -> Podcast-> Html
-podcastListItem address isSelected isSubscribed podcast = 
+podcastListItem : Signal.Address Action -> Bool -> Bool -> Maybe String -> Podcast-> Html
+podcastListItem address isSelected isSubscribed maybeImage podcast = 
   let
     listItemStyle = if isSelected then "list-group-item active" else "list-group-item"
     subscribedClass = if isSubscribed then "glyphicon glyphicon-star pull-right" else ""
+    imageData = Maybe.withDefault "" maybeImage
   in
     a [ href "#",
         onClick address (SelectPodcast (Just podcast.id)), 
         class listItemStyle
       ]
-      [ text podcast.name,
+      [ 
+        img [ src imageData ] [], 
+        text podcast.name,
         span [ class subscribedClass ] []
       ]
 
@@ -204,16 +220,18 @@ podcastListNav address visibility =
        li [ class (if visibility == All then "active" else ""), onClick address ToggleSubscriptionView ] [ a [ href "#" ] [ text "Search Results" ] ]
      ]
 
-podcastList: Signal.Address Action -> Visibility -> List Podcast -> List Int -> Maybe Int -> Html
-podcastList address visibility entries subscribedPodcasts selectedPodcast = 
+podcastList: Signal.Address Action -> Visibility -> List Podcast -> List Int -> Dict.Dict String String -> Maybe Int -> Html
+podcastList address visibility entries subscribedPodcasts images selectedPodcast = 
   let
     isSelected e = e.id == Maybe.withDefault 0 selectedPodcast
     isSubscribed e = List.member e.id subscribedPodcasts
-    entryItems = List.map (\e -> (podcastListItem address (isSelected e) (isSubscribed e) e)) (List.sortBy .name entries)
+    getImage e = Dict.get e.image images
+    sorted = List.sortBy .name entries
+    item e = podcastListItem address (isSelected e) (isSubscribed e) (getImage e) e
   in
     div []
         [ podcastListNav address visibility,
-          div [ class "list-group" ] entryItems
+          div [ class "list-group" ] (List.map item sorted)
         ]
 
 podcastDetails: Signal.Address Action -> Bool -> Maybe String -> Podcast -> Html
@@ -232,18 +250,21 @@ podcastDetails address subscribed maybeImage podcast =
              [ text buttonText ]
     ]
 
-
 -- MAIN
 
 view : Signal.Address Action -> Model -> Html
 view address model = 
   let
     visiblePodcasts = List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts
-    createPodcastList = podcastList address model.visibility visiblePodcasts model.subscribedPodcasts model.selectedPodcast
+    createPodcastList = podcastList address model.visibility visiblePodcasts model.subscribedPodcasts model.images model.selectedPodcast
     createSearchForm = searchForm address model.searchTerm
+
+    isSubscribed e = List.member e.id model.subscribedPodcasts
+    displayImage e = Dict.get e.image model.images
+
     podcastDisplay = 
-      case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts  of
-        Just e -> podcastDetails address (List.member e.id model.subscribedPodcasts) (Dict.get e.image model.images) e
+      case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts of
+        Just e -> e |> podcastDetails address (isSubscribed e) (displayImage e)
         Nothing -> div [] []
   in
     div [ class "container-fluid" ] 

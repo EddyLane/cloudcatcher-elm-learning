@@ -13,18 +13,19 @@ import Task exposing (andThen, Task)
 import Dict
 import Debug
 
- 
 port fullModelChanges : Signal CloudcatcherThree.ModelOutput
 port fullModelChanges = 
     Signal.map modelEncoder app.model
 
+
 getImages : CloudcatcherThree.Model -> List String
-getImages model = 
-  List.map .image (List.filterMap (\v -> Dict.get v model.podcasts) model.visiblePodcasts)
+getImages model = model.visiblePodcasts 
+                  |> List.filterMap (\v -> Dict.get v model.podcasts) 
+                  |> List.map .image
 
 port incomingImages : Signal (List String)
 port incomingImages = 
-    Signal.dropRepeats (Signal.map getImages app.model)
+    Signal.map getImages app.model |> Signal.dropRepeats
 
 port getStorage : Maybe CloudcatcherThree.ModelOutput
 
@@ -32,27 +33,15 @@ port tasks : Signal (Task.Task Never ())
 port tasks =
   app.tasks
 
---port addImage : Signal (Maybe LocalImage)
-
 port addImageTwo : Signal CloudcatcherThree.LocalImage
 
-
---addImageLogger = Signal.map logger addImage
-
 addImageTwoLogger = Signal.map AddImage addImageTwo
-
 
 initialModel : CloudcatcherThree.Model
 initialModel =
     case getStorage of
         Just data -> modelDecoder data
         Nothing -> emptyModel
-
-logger val = 
-  case val of
-    Just data -> (Debug.log "what" data.uri)
-    Nothing -> (Debug.log "what" "eh")
-
 
 app =
   StartApp.start
