@@ -8,7 +8,7 @@ import Http
 import Json.Decode as Json exposing(Decoder, (:=))
 import Task exposing (andThen, Task)
 import Dict
-
+import Hop
 -- MODEL
 
 type alias PodcastDict = Dict.Dict Int Podcast
@@ -41,7 +41,9 @@ type alias Model =
       selectedPodcast: Maybe Int,
       subscribedPodcasts : List Int,
       searchResults : List Int,
-      images: Dict.Dict String String
+      images: Dict.Dict String String,
+      routerPayload: Hop.Payload,
+      currentView: String
     }
 
 type alias ModelOutput = 
@@ -55,10 +57,6 @@ type alias ModelOutput =
       images: List String
     }
 
-emptyModel : Model
-emptyModel = Model Dict.empty [] All "" Nothing [] [] Dict.empty
--- UPDATE
-
 type Action 
     = NoOp 
     | AddImage LocalImage
@@ -68,10 +66,41 @@ type Action
     | SelectPodcast (Maybe Int)
     | TogglePodcastSubscribed Int
     | ToggleSubscriptionView
+    | ShowHomepage Hop.Payload
+    | ShowNotFound Hop.Payload
+
+
+routes : List (String, Hop.Payload -> Action)
+routes = [("/", ShowHomepage)]
+
+router : Hop.Router Action
+router =
+    Hop.new {
+        routes = routes,
+        notFoundAction = ShowNotFound
+    }
+
+emptyModel : Model
+emptyModel = Model Dict.empty [] All "" Nothing [] [] Dict.empty router.payload ""
+
+
+-- UPDATE
+
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
    case action of
+
+    ShowHomepage payload ->
+        ({model | currentView = "home", routerPayload = payload}
+        , Effects.none 
+        )
+
+
+    ShowNotFound payload ->
+        ( model
+        , Effects.none 
+        )
 
     AddImage image ->
         ({ model | images = Dict.insert image.uri image.data model.images }
@@ -254,15 +283,25 @@ podcastDetails address subscribed maybeImage podcast =
 
 -- MAIN
 
+
+subView : Signal.Address Action -> Model -> Html
+subView address model = 
+  case model.currentView of
+    "home" ->
+      div [] [ text "Home" ] 
+    _ ->
+      div [] [ text "Other" ] 
+
+
 view : Signal.Address Action -> Model -> Html
 view address model = 
   let
     visiblePodcasts 
         = model.visiblePodcasts 
           |> List.filterMap (\v -> Dict.get v model.podcasts) 
-          
+
     createPodcastList = podcastList address model.visibility visiblePodcasts model.subscribedPodcasts model.images model.selectedPodcast
-    createSearchForm = searchForm address model.searchTerm
+    createSearchForm = searchForm address model.searchTerm  
 
     isSubscribed e = List.member e.id model.subscribedPodcasts
     displayImage e = Dict.get e.image model.images
@@ -271,6 +310,7 @@ view address model =
       case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts of
         Just e -> e |> podcastDetails address (isSubscribed e) (displayImage e)
         Nothing -> div [] []
+
   in
     div [ class "container-fluid" ] 
         [ 
@@ -280,7 +320,7 @@ view address model =
           ],
           div [ class "col-md-6 col-sm-6 col-lg-6"]
           [
-            podcastDisplay
+            subView address model
           ]
         ]
 
@@ -305,17 +345,11 @@ modelDecoder model =
     let 
       visiblityConverter = if model.visibility == "All" then All else Subscribed
     in
-      { model | 
-          images = Dict.empty,
-          podcasts = listToDict .id model.podcasts,
-          visibility = visiblityConverter
-      }
+      Model (listToDict .id model.podcasts) model.visiblePodcasts visiblityConverter model.searchTerm model.selectedPodcast model.subscribedPodcasts model.searchResults Dict.empty router.payload ""
+
 
 modelEncoder : Model -> ModelOutput
 modelEncoder model =
-    { model | 
-          images = Dict.keys model.images,
-          podcasts = Dict.values model.podcasts,
-          visibility = toString model.visibility
-    }
+    ModelOutput (Dict.values model.podcasts) model.visiblePodcasts (toString model.visibility) model.searchTerm model.selectedPodcast model.subscribedPodcasts model.searchResults (Dict.keys model.images)
+
 

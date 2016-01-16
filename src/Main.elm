@@ -1,6 +1,6 @@
 module Main where
 
-import CloudcatcherThree exposing (update, view, emptyModel, listToDict, modelDecoder, modelEncoder, Action(..))
+import CloudcatcherThree exposing (update, view, emptyModel, listToDict, modelDecoder, modelEncoder, Action(..), router)
 import StartApp
 import Task
 import Effects exposing (Effects, Never)
@@ -12,11 +12,14 @@ import Json.Decode as Json exposing(Decoder, (:=))
 import Task exposing (andThen, Task)
 import Dict
 import Debug
+import Time
 
 port fullModelChanges : Signal CloudcatcherThree.ModelOutput
 port fullModelChanges = 
-    Signal.map modelEncoder app.model
-
+    app.model 
+      |> Signal.sampleOn delta
+      |> Signal.dropRepeats
+      |> Signal.map modelEncoder
 
 getImages : CloudcatcherThree.Model -> List String
 getImages model = 
@@ -27,8 +30,9 @@ getImages model =
 port incomingImages : Signal (List String)
 port incomingImages = 
     app.model 
-      |> Signal.map getImages 
+      |> Signal.sampleOn delta
       |> Signal.dropRepeats
+      |> Signal.map getImages 
 
 port getStorage : Maybe CloudcatcherThree.ModelOutput
 
@@ -36,6 +40,10 @@ port tasks : Signal (Task.Task Never ())
 port tasks = app.tasks
 
 port images : Signal CloudcatcherThree.LocalImage
+
+delta : Signal Time.Time
+delta =
+ Signal.map Time.inSeconds (Time.fps 10)
 
 addImage = Signal.map AddImage images
 
@@ -50,8 +58,12 @@ app =
     { init = (initialModel, Effects.none), 
       update = update, 
       view = view, 
-      inputs = [addImage]
+      inputs = [addImage, router.signal]
     }    
+
+port routeRunTask : Task () ()
+port routeRunTask =
+  router.run
 
 main =
   app.html

@@ -19,13 +19,14 @@ const STATE_KEY = 'state';
 
 const initiateElmApp = getStorage => {
 
-	const app = Elm.fullscreen(Elm.Main, { getStorage, addImageTwo: { uri: "Banter", data: "Boobs" } });
+	const app = Elm.fullscreen(Elm.Main, { getStorage, images: { uri: "Banter", data: "Boobs" } });
 
 
 
 	app.ports.fullModelChanges.subscribe((model) => {
 
-		//console.log(model);
+		console.log(model);
+
 		db.get(STATE_KEY)
 		.then(doc => db.put(Object.assign({}, model, {
 			_id: STATE_KEY,
@@ -56,7 +57,9 @@ const initiateElmApp = getStorage => {
 		// });
 
 		Object.keys(info.items).forEach(url => {
-				retrieveImage(url).then(data => app.ports.addImageTwo.send(data));
+
+
+			retrieveImage(url).then(data => app.ports.images.send(data));
 		});
 
 	});
@@ -64,23 +67,25 @@ const initiateElmApp = getStorage => {
 
 	app.ports.incomingImages.subscribe((images) => {
 
+		getAllImages(images, app);
+
 			//console.log('Images requested', images);
 
-			getAllImages(images).then(imageData => imageData.map(imageData => {
-					return app.ports.addImageTwo.send(imageData);
-			}));
+			// getAllImages(images).then(imageData => imageData.map(imageData => {
+			// 		return app.ports.images.send(imageData);
+			// }));
 	});
 
 };
 
 
 
-const getAllImages = images => {
+const getAllImages = (images, app) => {
 
 	return Promise.all(images.map(uri => {
 		return imageDb.lru.has(uri).then(exists => {
 			if (exists) {
-				return retrieveImage(uri);
+				return retrieveImage(uri).then((imageData) => app.ports.images.send(imageData))
 			} else {
 				return loadImage(uri);
 			}
