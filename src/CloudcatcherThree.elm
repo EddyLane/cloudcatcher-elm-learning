@@ -9,6 +9,7 @@ import Json.Decode as Json exposing(Decoder, (:=))
 import Task exposing (andThen, Task)
 import Dict
 import Hop
+import String exposing (concat,toInt)
 -- MODEL
 
 type alias PodcastDict = Dict.Dict Int Podcast
@@ -68,10 +69,12 @@ type Action
     | ToggleSubscriptionView
     | ShowHomepage Hop.Payload
     | ShowNotFound Hop.Payload
-
+    | ShowPodcast Hop.Payload
+    | HopAction Hop.Action
+    | NavigateTo String
 
 routes : List (String, Hop.Payload -> Action)
-routes = [("/", ShowHomepage)]
+routes = [("/", ShowHomepage), ("/podcasts/:id", ShowPodcast)]
 
 router : Hop.Router Action
 router =
@@ -87,94 +90,111 @@ emptyModel = Model Dict.empty [] All "" Nothing [] [] Dict.empty router.payload 
 -- UPDATE
 
 
+
 update : Action -> Model -> (Model, Effects Action)
 update action model =
-   case action of
+    let
+      selectedPodcast params = 
+        case Dict.get "id" params of
+          Just stringId -> Result.toMaybe (toInt stringId)
+          Nothing -> Nothing
+    in
+       case action of
 
-    ShowHomepage payload ->
-        ({model | currentView = "home", routerPayload = payload}
-        , Effects.none 
-        )
+        HopAction action ->
+            (model, Effects.none)
 
+        NavigateTo path ->
+            (model, Effects.map HopAction (Hop.navigateTo path))
 
-    ShowNotFound payload ->
-        ( model
-        , Effects.none 
-        )
+        ShowHomepage payload ->
+            ({model | currentView = "home", routerPayload = payload}
+            , Effects.none 
+            )
 
-    AddImage image ->
-        ({ model | images = Dict.insert image.uri image.data model.images }
-        , Effects.none 
-        )
+        ShowPodcast payload ->
+            ({model | currentView = "show-podcast", routerPayload = payload, selectedPodcast = selectedPodcast payload.params}
+            , Effects.none 
+            )
 
-    NoOp ->
-        ( model
-        , Effects.none 
-        )
+        ShowNotFound payload ->
+            ( model
+            , Effects.none 
+            )
 
-    AddPodcasts new -> 
-        ({ model | 
-            podcasts = Dict.union new model.podcasts,
-            visiblePodcasts = Dict.keys new,
-            searchResults = Dict.keys new
-         }
-         , Effects.none
-        )
+        AddImage image ->
+            ({ model | images = Dict.insert image.uri image.data model.images }
+            , Effects.none 
+            )
 
-    UpdateSearchInput term ->
-        ({ model | searchTerm = term }
-         , Effects.none
-        )
+        NoOp ->
+            ( model
+            , Effects.none 
+            )
 
-    SubmitSearch term -> 
-        ({ model | 
-            searchTerm = term,
-            visibility = All
-          }
-         , getSearchResults term
-        )  
+        AddPodcasts new -> 
+            ({ model | 
+                podcasts = Dict.union new model.podcasts,
+                visiblePodcasts = Dict.keys new,
+                searchResults = Dict.keys new
+             }
+             , Effects.none
+            )
 
-    SelectPodcast id ->
-        ({ model | selectedPodcast = id }
-         , Effects.none
-        )
+        UpdateSearchInput term ->
+            ({ model | searchTerm = term }
+             , Effects.none
+            )
 
-    ToggleSubscriptionView ->
-        ( let 
-            getVisiblity v = 
-              if v == All then Subscribed else All
-            getVisiblePodcasts v =  
-              if v == Subscribed then model.searchResults else model.subscribedPodcasts
+        SubmitSearch term -> 
+            ({ model | 
+                searchTerm = term,
+                visibility = All
+              }
+             , getSearchResults term
+            )  
 
-          in 
-            { model | 
-                visibility = getVisiblity model.visibility,
-                visiblePodcasts = getVisiblePodcasts model.visibility
-            }    
-          , Effects.none
-        )
+        SelectPodcast id ->
+            ({ model | selectedPodcast = id }
+             , Effects.none
+            )
 
-    TogglePodcastSubscribed id ->
-      ( let
-          subscribe = 
-            { model | 
-                subscribedPodcasts = id :: model.subscribedPodcasts,
-                visiblePodcasts = if model.visibility == All 
-                                  then model.visiblePodcasts 
-                                  else id :: model.visiblePodcasts
-            }
-          unsubscribe = 
-            { model | 
-                subscribedPodcasts = List.filter (\e -> e /= id) model.subscribedPodcasts, 
-                visiblePodcasts = if model.visibility == All 
-                                  then model.visiblePodcasts 
-                                  else List.filter (\e -> e /= id) model.subscribedPodcasts
-            }
-          toggle = if (List.member id model.subscribedPodcasts) then unsubscribe else subscribe
-        in
-          toggle
-        , Effects.none
-      )
+        ToggleSubscriptionView ->
+            ( let 
+                getVisiblity v = 
+                  if v == All then Subscribed else All
+                getVisiblePodcasts v =  
+                  if v == Subscribed then model.searchResults else model.subscribedPodcasts
+
+              in 
+                { model | 
+                    visibility = getVisiblity model.visibility,
+                    visiblePodcasts = getVisiblePodcasts model.visibility
+                }    
+              , Effects.none
+            )
+
+        TogglePodcastSubscribed id ->
+          ( let
+              subscribe = 
+                { model | 
+                    subscribedPodcasts = id :: model.subscribedPodcasts,
+                    visiblePodcasts = if model.visibility == All 
+                                      then model.visiblePodcasts 
+                                      else id :: model.visiblePodcasts
+                }
+              unsubscribe = 
+                { model | 
+                    subscribedPodcasts = List.filter (\e -> e /= id) model.subscribedPodcasts, 
+                    visiblePodcasts = if model.visibility == All 
+                                      then model.visiblePodcasts 
+                                      else List.filter (\e -> e /= id) model.subscribedPodcasts
+                }
+              toggle = if (List.member id model.subscribedPodcasts) then unsubscribe else subscribe
+            in
+              toggle
+            , Effects.none
+          )
 
 -- EFFECTS
 
@@ -233,11 +253,12 @@ podcastListItem address isSelected isSubscribed maybeImage podcast =
     imageData = Maybe.withDefault "" maybeImage
   in
     a [ href "#",
-        onClick address (SelectPodcast (Just podcast.id)), 
+        --onClick address (SelectPodcast (Just podcast.id)), 
+        onClick address (NavigateTo ("/podcasts/" ++ toString podcast.id)), 
         class listItemStyle
       ]
       [ 
-        img [ src imageData ] [], 
+        img [ src imageData, style [("width", "20px"),("height", "20px")] ] [], 
         text podcast.name,
         span [ class subscribedClass ] []
       ]
@@ -286,11 +307,23 @@ podcastDetails address subscribed maybeImage podcast =
 
 subView : Signal.Address Action -> Model -> Html
 subView address model = 
-  case model.currentView of
-    "home" ->
-      div [] [ text "Home" ] 
-    _ ->
-      div [] [ text "Other" ] 
+  let 
+
+    isSubscribed e = List.member e.id model.subscribedPodcasts
+    displayImage e = Dict.get e.image model.images
+
+    podcastDisplay = 
+      case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts of
+        Just e -> e |> podcastDetails address (isSubscribed e) (displayImage e)
+        Nothing -> div [] []
+  in
+    case model.currentView of
+      "home" ->
+        div [] [ text "Home" ] 
+      "show-podcast" ->
+        podcastDisplay
+      _ ->
+        div [] [ text "Other" ] 
 
 
 view : Signal.Address Action -> Model -> Html
@@ -303,22 +336,14 @@ view address model =
     createPodcastList = podcastList address model.visibility visiblePodcasts model.subscribedPodcasts model.images model.selectedPodcast
     createSearchForm = searchForm address model.searchTerm  
 
-    isSubscribed e = List.member e.id model.subscribedPodcasts
-    displayImage e = Dict.get e.image model.images
-
-    podcastDisplay = 
-      case Dict.get (Maybe.withDefault 0 model.selectedPodcast) model.podcasts of
-        Just e -> e |> podcastDetails address (isSubscribed e) (displayImage e)
-        Nothing -> div [] []
-
   in
     div [ class "container-fluid" ] 
         [ 
-          div [ class "col-md-6 col-sm-6 col-lg-6"]
+          div [ class "col-md-3 col-sm-3 col-lg-3"]
           [ createSearchForm,
             createPodcastList
           ],
-          div [ class "col-md-6 col-sm-6 col-lg-6"]
+          div [ class "col-md-9 col-sm-9 col-lg-9"]
           [
             subView address model
           ]
